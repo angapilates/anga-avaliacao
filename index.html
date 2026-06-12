@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anga - Avaliação Física</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="section-label" id="sectionLabel">Seção 1 de 5</div>
+
+      <!-- SEÇÃO 1: ANAMNESE -->
+      <section class="form-section active" id="section1">
+        <h2>Anamnese</h2>
+
+        <div class="field-group">
+          <label>Chave de API da Anthropic</label>
+          <input type="password" id="apiKey" placeholder="sk-ant-..." />
+        </div>
+
+        <h3>Identificação</h3>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Nome completo</label>
+            <input type="text" id="nomeCompleto" placeholder="Nome do paciente" />
+          </div>
+          <div class="field-group">
+            <label>Data de nascimento</label>
+            <input type="date" id="dataNascimento" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Ocupação / profissão</label>
+            <input type="text" id="ocupacao" placeholder="Ex: Professora, Motorista..." />
+          </div>
+          <div class="field-group">
+            <label>Fisioterapeuta avaliador</label>
+            <input type="text" id="fisioterapeuta" placeholder="Nome do profissional" />
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Data da avaliação</label>
+          <input type="date" id="dataAvaliacao" />
+        </div>
+
+        <h3>Histórico Clínico</h3>
+        <div class="field-group">
+          <label>Objetivo</label>
+          <textarea id="objetivo" rows="2" placeholder="Objetivo da avaliação..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Queixa principal</label>
+          <textarea id="queixaPrincipal" rows="2" placeholder="Queixa principal do paciente..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>HDA – História da doença atual</label>
+          <textarea id="hda" rows="3" placeholder="Descreva a história da doença atual..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Diagnóstico clínico</label>
+          <textarea id="diagnostico" rows="2" placeholder="Diagnóstico clínico..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Resultado de exames</label>
+          <textarea id="exames" rows="2" placeholder="Resultados de exames complementares..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>APP – Antecedentes patológicos pessoais</label>
+          <textarea id="app" rows="2" placeholder="Cirurgias, fraturas, doenças crônicas..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Outros sintomas</label>
+          <textarea id="outrosSintomas" rows="2" placeholder="Outros sintomas relevantes..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Medicamentos em uso</label>
+          <textarea id="medicamentos" rows="2" placeholder="Medicamentos e dosagens..."></textarea>
+        </div>
+
+        <h3>Hábitos de Vida</h3>
+        <div class="field-group">
+          <label>AVDs – Atividades de vida diária</label>
+          <textarea id="avds" rows="2" placeholder="Rotina de atividades diárias..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Sono</label>
+          <input type="text" id="sono" placeholder="Horas de sono, qualidade..." />
+        </div>
+        <div class="field-group">
+          <label>Alimentação</label>
+          <input type="text" id="alimentacao" placeholder="Padrão alimentar..." />
+        </div>
+        <div class="field-group">
+          <label>Atividade física</label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="atividadeFisica" value="sedentario" /> Sedentário</label>
+            <label class="radio-option"><input type="radio" name="atividadeFisica" value="1-2x" /> 1–2x/semana</label>
+            <label class="radio-option"><input type="radio" name="atividadeFisica" value="3-4x" /> 3–4x/semana</label>
+            <label class="radio-option"><input type="radio" name="atividadeFisica" value="5x+" /> 5x+/semana</label>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Outros hábitos relevantes</label>
+          <textarea id="outrosHabitos" rows="2" placeholder="Tabagismo, etilismo, etc..."></textarea>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: ANÁLISE DA DOR -->
+      <section class="form-section" id="section2">
+        <h2>Análise da Dor</h2>
+
+        <div class="field-group">
+          <label>Intensidade da dor (EVA 0–10)</label>
+          <div class="eva-scale">
+            <span class="eva-label">0</span>
+            <input type="range" id="evaDor" min="0" max="10" step="1" value="0" oninput="document.getElementById('evaValue').textContent = this.value" />
+            <span class="eva-label">10</span>
+            <span class="eva-value" id="evaValue">0</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Frequência</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn" data-group="frequencia" data-value="esporadica">Esporádica</button>
+            <button type="button" class="toggle-btn" data-group="frequencia" data-value="alguns-dias">Alguns dias</button>
+            <button type="button" class="toggle-btn" data-group="frequencia" data-value="diaria">Diária</button>
+            <button type="button" class="toggle-btn" data-group="frequencia" data-value="constante">Constante</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Tipo de dor</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="aguda">Aguda</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="cronica">Crônica</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="latejante">Latejante</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="queimacao">Queimação</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="pontada">Pontada</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="irradiada">Irradiada</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>O que piora</label>
+          <textarea id="piora" rows="2" placeholder="Movimentos, posições, atividades que pioram..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>O que melhora</label>
+          <textarea id="melhora" rows="2" placeholder="O que alivia a dor..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Horário de maior intensidade</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn" data-group="horario" data-value="manha">Manhã</button>
+            <button type="button" class="toggle-btn" data-group="horario" data-value="tarde">Tarde</button>
+            <button type="button" class="toggle-btn" data-group="horario" data-value="noite">Noite</button>
+            <button type="button" class="toggle-btn" data-group="horario" data-value="madrugada">Madrugada</button>
+            <button type="button" class="toggle-btn" data-group="horario" data-value="variavel">Variável</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Horário visceral (se aplicável)</label>
+          <select id="horarioVisceral">
+            <option value="">Selecionar...</option>
+            <option value="nao-se-aplica">Não se aplica</option>
+            <option value="2h-4h">02h–04h (Pulmão)</option>
+            <option value="4h-6h">04h–06h (Intestino Grosso)</option>
+            <option value="6h-8h">06h–08h (Estômago)</option>
+            <option value="8h-10h">08h–10h (Baço/Pâncreas)</option>
+            <option value="10h-12h">10h–12h (Coração)</option>
+            <option value="12h-14h">12h–14h (Intestino Delgado)</option>
+            <option value="14h-16h">14h–16h (Bexiga)</option>
+            <option value="16h-18h">16h–18h (Rim)</option>
+            <option value="18h-20h">18h–20h (Pericárdio)</option>
+            <option value="20h-22h">20h–22h (Triplo Aquecedor)</option>
+            <option value="22h-24h">22h–24h (Vesícula Biliar)</option>
+            <option value="0h-2h">00h–02h (Fígado)</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: ANÁLISE POSTURAL ESTÁTICA -->
+      <section class="form-section" id="section3">
+        <h2>Análise Postural Estática</h2>
+        <p class="section-description">Adicione fotos do paciente para análise postural com IA.</p>
+
+        <div class="photo-grid">
+          <div class="photo-card">
+            <div class="photo-label">Vista Anterior</div>
+            <div class="photo-area" id="photoAnterior">
+              <img class="photo-preview" id="previewAnterior" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderAnterior">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputAnterior" hidden onchange="handlePhoto(this, 'Anterior')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputAnterior').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('Anterior')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultAnterior"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Vista Lateral Direita</div>
+            <div class="photo-area" id="photoLateralD">
+              <img class="photo-preview" id="previewLateralD" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderLateralD">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputLateralD" hidden onchange="handlePhoto(this, 'LateralD')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputLateralD').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('LateralD')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultLateralD"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Vista Lateral Esquerda</div>
+            <div class="photo-area" id="photoLateralE">
+              <img class="photo-preview" id="previewLateralE" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderLateralE">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputLateralE" hidden onchange="handlePhoto(this, 'LateralE')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputLateralE').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('LateralE')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultLateralE"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Vista Posterior</div>
+            <div class="photo-area" id="photoPosterior">
+              <img class="photo-preview" id="previewPosterior" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderPosterior">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputPosterior" hidden onchange="handlePhoto(this, 'Posterior')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputPosterior').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('Posterior')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultPosterior"></div>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-top:1.5rem">
+          <label>Observações posturais gerais</label>
+          <textarea id="obsPostural" rows="3" placeholder="Anotações sobre postura, assimetrias, compensações..."></textarea>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 4: CADEIAS MUSCULARES -->
+      <section class="form-section" id="section4">
+        <h2>Análise das Cadeias Musculares</h2>
+        <p class="section-description">Avaliação baseada nas metodologias de Busquet e Myers.</p>
+
+        <div class="photo-grid">
+          <div class="photo-card">
+            <div class="photo-label">Flexão Global</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewFlexao" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderFlexao">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputFlexao" hidden onchange="handlePhoto(this, 'Flexao')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputFlexao').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('Flexao')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultFlexao"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Extensão Global</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewExtensao" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderExtensao">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputExtensao" hidden onchange="handlePhoto(this, 'Extensao')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputExtensao').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('Extensao')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultExtensao"></div>
+          </div>
+        </div>
+
+        <div class="photo-grid" style="margin-top:1.25rem">
+          <div class="photo-card">
+            <div class="photo-label">Flexão Lateral D</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewFlexaoLatD" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderFlexaoLatD">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputFlexaoLatD" hidden onchange="handlePhoto(this, 'FlexaoLatD')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputFlexaoLatD').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('FlexaoLatD')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultFlexaoLatD"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Flexão Lateral E</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewFlexaoLatE" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderFlexaoLatE">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputFlexaoLatE" hidden onchange="handlePhoto(this, 'FlexaoLatE')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputFlexaoLatE').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('FlexaoLatE')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultFlexaoLatE"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Rotação D</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewRotacaoD" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderRotacaoD">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputRotacaoD" hidden onchange="handlePhoto(this, 'RotacaoD')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputRotacaoD').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('RotacaoD')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultRotacaoD"></div>
+          </div>
+
+          <div class="photo-card">
+            <div class="photo-label">Rotação E</div>
+            <div class="photo-area">
+              <img class="photo-preview" id="previewRotacaoE" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderRotacaoE">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="inputRotacaoE" hidden onchange="handlePhoto(this, 'RotacaoE')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputRotacaoE').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('RotacaoE')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultRotacaoE"></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Observações das cadeias musculares</label>
+          <textarea id="obsCadeias" rows="3" placeholder="Padrões de tensão, compensações, achados relevantes..."></textarea>
+        </div>
+
+        <h3>Diafragma e Transverso do Abdômen</h3>
+        <div class="field-group">
+          <label>Função diafragmática</label>
+          <textarea id="diafragma" rows="2" placeholder="Impressões clínicas sobre a função diafragmática..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Transverso do abdômen</label>
+          <textarea id="transverso" rows="2" placeholder="Impressões clínicas sobre o transverso do abdômen..."></textarea>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: TESTES DE MOBILIDADE E ESTABILIDADE -->
+      <section class="form-section" id="section5">
+        <h2>Testes de Mobilidade e Estabilidade</h2>
+
+        <h3>Ombro / Escápula – Apley</h3>
+        <div class="test-grid">
+
+          <!-- Apley 1 -->
+          <div class="test-item test-item--column">
+            <span class="test-name">Mão no ombro</span>
+            <div class="btn-group-row">
+              <span class="group-label">Resultado</span>
+              <div class="test-options">
+                <button type="button" class="result-btn" data-test="apley1" data-val="neg">Neg</button>
+                <button type="button" class="result-btn" data-test="apley1" data-val="pos-d">Pos D</button>
+                <button type="button" class="result-btn" data-test="apley1" data-val="pos-e">Pos E</button>
+                <button type="button" class="result-btn" data-test="apley1" data-val="pos-de">Pos D+E</button>
+              </div>
+            </div>
+            <div class="btn-group-row">
+              <span class="group-label">Achado adicional</span>
+              <div class="test-options">
+                <button type="button" class="result-btn btn-multi" data-test="apley1-red-d" data-val="red-d">Redução ADM D</button>
+                <button type="button" class="result-btn btn-multi" data-test="apley1-red-e" data-val="red-e">Redução ADM E</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Apley 2 -->
+          <div class="test-item test-item--column">
+            <span class="test-name">Palma das costas</span>
+            <div class="btn-group-row">
+              <span class="group-label">Resultado</span>
+              <div class="test-options">
+                <button type="button" class="result-btn" data-test="apley2" data-val="neg">Neg</button>
+                <button type="button" class="result-btn" data-test="apley2" data-val="pos-d">Pos D</button>
+                <button type="button" class="result-btn" data-test="apley2" data-val="pos-e">Pos E</button>
+                <button type="button" class="result-btn" data-test="apley2" data-val="pos-de">Pos D+E</button>
+              </div>
+            </div>
+            <div class="btn-group-row">
+              <span class="group-label">Achado adicional</span>
+              <div class="test-options">
+                <button type="button" class="result-btn btn-multi" data-test="apley2-red-d" data-val="red-d">Redução ADM D</button>
+                <button type="button" class="result-btn btn-multi" data-test="apley2-red-e" data-val="red-e">Redução ADM E</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Apley 3 -->
+          <div class="test-item test-item--column">
+            <span class="test-name">Dorso nas costas</span>
+            <div class="btn-group-row">
+              <span class="group-label">Resultado</span>
+              <div class="test-options">
+                <button type="button" class="result-btn" data-test="apley3" data-val="neg">Neg</button>
+                <button type="button" class="result-btn" data-test="apley3" data-val="pos-d">Pos D</button>
+                <button type="button" class="result-btn" data-test="apley3" data-val="pos-e">Pos E</button>
+                <button type="button" class="result-btn" data-test="apley3" data-val="pos-de">Pos D+E</button>
+              </div>
+            </div>
+            <div class="btn-group-row">
+              <span class="group-label">Achado adicional</span>
+              <div class="test-options">
+                <button type="button" class="result-btn btn-multi" data-test="apley3-red-d" data-val="red-d">Redução ADM D</button>
+                <button type="button" class="result-btn btn-multi" data-test="apley3-red-e" data-val="red-e">Redução ADM E</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Discinese com Tipo 1/2/3 -->
+          <div class="test-item test-item--column">
+            <div class="test-item-main">
+              <span class="test-name">Discinese escapular</span>
+              <div class="test-options">
+                <button type="button" class="result-btn" data-test="discinese" data-val="neg">Neg</button>
+                <button type="button" class="result-btn" data-test="discinese" data-val="pos-d">Pos D</button>
+                <button type="button" class="result-btn" data-test="discinese" data-val="pos-e">Pos E</button>
+                <button type="button" class="result-btn" data-test="discinese" data-val="pos-de">Pos D+E</button>
+              </div>
+            </div>
+            <div class="apley-tipo hidden" id="discinese-tipo">
+              <span class="tipo-label">Tipo:</span>
+              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo1">Tipo 1</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo2">Tipo 2</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo3">Tipo 3</button>
+            </div>
+          </div>
+        </div>
+
+        <h3>Quadril</h3>
+        <div class="test-grid">
+          <div class="test-item">
+            <span class="test-name">Thomas – Quadríceps</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="thomas1" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="thomas1" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="thomas1" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="thomas1" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+          <div class="test-item">
+            <span class="test-name">Thomas – Iliopsoas</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="thomas2" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="thomas2" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="thomas2" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="thomas2" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+          <div class="test-item test-item--column">
+            <span class="test-name">Patrick FABERE</span>
+            <div class="btn-group-row">
+              <span class="group-label">Resultado</span>
+              <div class="test-options">
+                <button type="button" class="result-btn" data-test="patrick" data-val="neg">Neg</button>
+                <button type="button" class="result-btn" data-test="patrick" data-val="pos-d">Positivo D</button>
+                <button type="button" class="result-btn" data-test="patrick" data-val="pos-e">Positivo E</button>
+                <button type="button" class="result-btn" data-test="patrick" data-val="pos-de">Positivo D+E</button>
+              </div>
+            </div>
+            <div class="btn-group-row">
+              <span class="group-label">Achado adicional</span>
+              <div class="test-options">
+                <button type="button" class="result-btn btn-multi" data-test="patrick-red-d" data-val="red-d">Redução ADM D</button>
+                <button type="button" class="result-btn btn-multi" data-test="patrick-red-e" data-val="red-e">Redução ADM E</button>
+              </div>
+            </div>
+          </div>
+          <div class="test-item">
+            <span class="test-name">Ober – TI-IT</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="ober" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="ober" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="ober" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="ober" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+        </div>
+
+        <h3>Step Down – Avaliação Funcional</h3>
+        <div class="test-grid">
+          <div class="test-item">
+            <span class="test-name">Quadril</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+          <div class="test-item">
+            <span class="test-name">Joelho</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+          <div class="test-item">
+            <span class="test-name">Tornozelo</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="neg">Neg</button>
+              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-d">Pos D</button>
+              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-e">Pos E</button>
+              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-de">Pos D+E</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-top:1.5rem">
+          <label>Observações dos testes</label>
+          <textarea id="obsTestes" rows="3" placeholder="Observações clínicas relevantes..."></textarea>
+        </div>
+
+        <div class="confirm-box">
+          <button type="button" class="btn-confirm" onclick="confirmarAvaliacao()">Confirmar avaliação completa ✓</button>
+        </div>
+      </section>
+
+      <!-- NAVEGAÇÃO -->
+      <div class="nav-buttons">
+        <button type="button" class="btn-nav btn-back" id="btnBack" onclick="navigate(-1)" style="visibility:hidden">← Voltar</button>
+        <button type="button" class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">Próximo →</button>
+      </div>
+    </div>
+
+    <div class="footer-logo">
+      <span class="logo-text">anga</span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
