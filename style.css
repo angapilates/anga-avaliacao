@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #ffffff;
+  --bg: #faf9f7;
   --card: #ffffff;
   --primary: #3b6fe0;
   --primary-dark: #2a55c0;
