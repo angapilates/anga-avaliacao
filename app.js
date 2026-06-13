@@ -45,6 +45,34 @@ document.addEventListener('click', e => {
   document.getElementById('evaDesc').textContent = EVA_DESC[parseInt(btn.dataset.val)];
 });
 
+// ── Visceral hour info ────────────────────────────────────────
+const VISCERAL_MAP = {
+  '23h-1h':  'Vesícula Biliar (23h – 1h)',
+  '1h-3h':   'Fígado (1h – 3h)',
+  '3h-5h':   'Pulmão (3h – 5h)',
+  '5h-7h':   'Intestino Grosso (5h – 7h)',
+  '7h-9h':   'Estômago (7h – 9h)',
+  '9h-11h':  'Baço / Pâncreas (9h – 11h)',
+  '11h-13h': 'Coração (11h – 13h)',
+  '13h-15h': 'Intestino Delgado (13h – 15h)',
+  '15h-17h': 'Bexiga (15h – 17h)',
+  '17h-19h': 'Rim (17h – 19h)',
+  '19h-21h': 'Pericárdio (19h – 21h)',
+  '21h-23h': 'Triplo Aquecedor (21h – 23h)',
+};
+
+document.getElementById('horarioVisceral').addEventListener('change', function () {
+  const card = document.getElementById('visceralCard');
+  const body = document.getElementById('visceralCardBody');
+  const display = VISCERAL_MAP[this.value];
+  if (display) {
+    body.textContent = display;
+    card.style.display = 'block';
+  } else {
+    card.style.display = 'none';
+  }
+});
+
 // ── Toggle buttons (single-select per group) ─────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('.toggle-btn');

@@ -326,6 +326,28 @@ textarea { resize: vertical; }
   min-height: 1.2em;
 }
 
+/* VISCERAL CARD */
+.visceral-card {
+  margin-top: 0.6rem;
+  background: #f8f9fa;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+}
+.visceral-card-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.25rem;
+}
+.visceral-card-body {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
 /* PHOTO GRID */
 .photo-grid {
   display: grid;
