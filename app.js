@@ -34,6 +34,17 @@ function updateNav() {
   }
 }
 
+// ── EVA Scale ────────────────────────────────────────────────
+const EVA_DESC = ['Sem dor','Dor leve','Dor leve','Dor leve','Dor moderada','Dor moderada','Dor moderada','Dor intensa','Dor intensa','Dor intensa','Pior dor possível'];
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.eva-btn');
+  if (!btn) return;
+  document.querySelectorAll('.eva-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('evaDesc').textContent = EVA_DESC[parseInt(btn.dataset.val)];
+});
+
 // ── Toggle buttons (single-select per group) ─────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('.toggle-btn');

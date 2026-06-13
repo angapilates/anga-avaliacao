@@ -126,12 +126,20 @@
 
         <div class="field-group">
           <label>Intensidade da dor (EVA 0–10)</label>
-          <div class="eva-scale">
-            <span class="eva-label">0</span>
-            <input type="range" id="evaDor" min="0" max="10" step="1" value="0" oninput="document.getElementById('evaValue').textContent = this.value" />
-            <span class="eva-label">10</span>
-            <span class="eva-value" id="evaValue">0</span>
+          <div class="eva-buttons">
+            <button type="button" class="eva-btn" data-val="0">0</button>
+            <button type="button" class="eva-btn" data-val="1">1</button>
+            <button type="button" class="eva-btn" data-val="2">2</button>
+            <button type="button" class="eva-btn" data-val="3">3</button>
+            <button type="button" class="eva-btn" data-val="4">4</button>
+            <button type="button" class="eva-btn" data-val="5">5</button>
+            <button type="button" class="eva-btn" data-val="6">6</button>
+            <button type="button" class="eva-btn" data-val="7">7</button>
+            <button type="button" class="eva-btn" data-val="8">8</button>
+            <button type="button" class="eva-btn" data-val="9">9</button>
+            <button type="button" class="eva-btn" data-val="10">10</button>
           </div>
+          <div class="eva-desc" id="evaDesc"></div>
         </div>
 
         <div class="field-group">
