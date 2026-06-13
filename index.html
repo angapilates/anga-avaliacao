@@ -8,12 +8,19 @@
 </head>
 <body>
   <div class="app">
-    <div class="card">
+    <header class="app-header">
+      <div class="header-brand">Anga</div>
+      <div class="header-subtitle">AVALIACAO FISICA</div>
+    </header>
+
+    <div class="progress-row">
       <div class="progress-bar">
         <div class="progress-fill" id="progressFill"></div>
       </div>
-      <div class="section-label" id="sectionLabel">Seção 1 de 5</div>
+      <span class="section-label" id="sectionLabel">Seção 1 de 5</span>
+    </div>
 
+    <div class="card">
       <!-- SEÇÃO 1: ANAMNESE -->
       <section class="form-section active" id="section1">
         <h2>Anamnese</h2>
@@ -575,11 +582,11 @@
         </div>
       </section>
 
-      <!-- NAVEGAÇÃO -->
-      <div class="nav-buttons">
-        <button type="button" class="btn-nav btn-back" id="btnBack" onclick="navigate(-1)" style="visibility:hidden">← Voltar</button>
-        <button type="button" class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">Próximo →</button>
-      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button type="button" class="btn-nav btn-back" id="btnBack" onclick="navigate(-1)">← Voltar</button>
+      <button type="button" class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">Próximo →</button>
     </div>
 
     <div class="footer-logo">

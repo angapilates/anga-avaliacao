@@ -20,7 +20,7 @@ function updateNav() {
 
   const back = document.getElementById('btnBack');
   const next = document.getElementById('btnNext');
-  back.style.visibility = currentSection === 1 ? 'hidden' : 'visible';
+  back.style.display = currentSection === 1 ? 'none' : '';
 
   if (currentSection === TOTAL_SECTIONS) {
     next.style.display = 'none';
