@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anga - Avaliação Física</title>
+  <title>Angá - Avaliação Física</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <div class="header-brand">Anga</div>
+      <div class="header-brand">Angá</div>
       <div class="header-subtitle">AVALIACAO FISICA</div>
     </header>
 
@@ -21,14 +21,16 @@
     </div>
 
     <div class="card">
-      <!-- SEÇÃO 1: ANAMNESE -->
-      <section class="form-section active" id="section1">
-        <h2>Anamnese</h2>
-
+      <div class="api-key-row" id="apiKeyRow" style="display:none">
         <div class="field-group">
           <label>Chave de API da Anthropic</label>
           <input type="password" id="apiKey" placeholder="sk-ant-..." />
         </div>
+      </div>
+
+      <!-- SEÇÃO 1: ANAMNESE -->
+      <section class="form-section active" id="section1">
+        <h2>Anamnese</h2>
 
         <h3>Identificação</h3>
         <div class="field-row">
@@ -584,13 +586,31 @@
 
     </div>
 
+    <div class="section-footer">
+      <div class="section-footer-fields">
+        <div class="footer-field">
+          <label>Fisioterapeuta responsável</label>
+          <input type="text" id="footerFisio" placeholder="Nome do profissional" />
+        </div>
+        <div class="footer-field">
+          <label>Crefito</label>
+          <input type="text" id="footerCrefito" placeholder="Número" />
+        </div>
+        <div class="footer-field">
+          <label>Data</label>
+          <input type="text" id="footerData" readonly />
+        </div>
+        <div class="footer-field">
+          <label>Localização</label>
+          <input type="text" id="footerLocalizacao" value="Natal/RN" />
+        </div>
+      </div>
+      <span class="footer-brand">angá</span>
+    </div>
+
     <div class="nav-buttons">
       <button type="button" class="btn-nav btn-back" id="btnBack" onclick="navigate(-1)">← Voltar</button>
       <button type="button" class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">Próximo →</button>
-    </div>
-
-    <div class="footer-logo">
-      <span class="logo-text">anga</span>
     </div>
   </div>
 

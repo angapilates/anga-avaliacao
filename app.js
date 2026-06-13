@@ -27,6 +27,11 @@ function updateNav() {
   } else {
     next.style.display = '';
   }
+
+  const apiRow = document.getElementById('apiKeyRow');
+  if (apiRow) {
+    apiRow.style.display = (currentSection === 3 || currentSection === 4) ? 'block' : 'none';
+  }
 }
 
 // ── Toggle buttons (single-select per group) ─────────────────
@@ -184,3 +189,4 @@ function showToast(msg) {
 
 // ── Init ──────────────────────────────────────────────────────
 updateNav();
+document.getElementById('footerData').value = new Date().toLocaleDateString('pt-BR');
