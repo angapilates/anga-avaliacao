@@ -117,7 +117,7 @@ body {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
-  flex: 1;
+  flex: 0 0 auto;
 }
 .footer-field {
   display: flex;
@@ -130,29 +130,35 @@ body {
   letter-spacing: 0.08em;
   margin-bottom: 0.2rem;
 }
-.footer-field input {
-  background: transparent;
-  border: none;
-  border-radius: 0;
+.section-footer .footer-field input {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   color: #ffffff;
   font-size: 0.82rem;
   padding: 0.15rem 0;
   width: 100%;
-  box-shadow: none;
+  transition: none;
 }
-.footer-field input::placeholder {
+.section-footer .footer-field input::placeholder {
   color: #6b7280;
 }
-.footer-field input:focus {
+.section-footer .footer-field input:focus {
   outline: none;
-  box-shadow: none;
+  border: none !important;
+  box-shadow: none !important;
+}
+.footer-logo-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .footer-logo-img {
   height: 80px;
   width: auto;
   object-fit: contain;
-  flex-shrink: 0;
-  margin-left: 1rem;
 }
 
 /* SECTIONS */
