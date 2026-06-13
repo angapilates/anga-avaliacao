@@ -146,14 +146,12 @@ body {
   border-bottom-color: var(--accent);
   box-shadow: none;
 }
-.footer-brand {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  color: var(--accent);
-  text-transform: lowercase;
-  white-space: nowrap;
+.footer-logo-img {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
   align-self: center;
+  flex-shrink: 0;
 }
 
 /* SECTIONS */
