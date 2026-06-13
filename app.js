@@ -73,6 +73,33 @@ document.getElementById('horarioVisceral').addEventListener('change', function (
   }
 });
 
+// ── Body map overlay ──────────────────────────────────────────
+const svgOverlay = document.getElementById('svgMapaCorporal');
+if (svgOverlay) {
+  svgOverlay.addEventListener('click', e => {
+    if (e.target.classList.contains('body-marker')) {
+      e.target.remove();
+      return;
+    }
+    const rect = svgOverlay.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', x + '%');
+    dot.setAttribute('cy', y + '%');
+    dot.setAttribute('r', '6');
+    dot.setAttribute('fill', '#c25609');
+    dot.setAttribute('stroke', '#fff');
+    dot.setAttribute('stroke-width', '1.5');
+    dot.classList.add('body-marker');
+    svgOverlay.appendChild(dot);
+  });
+}
+
+function limparMapaCorporal() {
+  document.querySelectorAll('.body-marker').forEach(m => m.remove());
+}
+
 // ── Toggle buttons (single-select per group) ─────────────────
 document.addEventListener('click', e => {
   const btn = e.target.closest('.toggle-btn');

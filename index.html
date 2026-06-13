@@ -125,6 +125,16 @@
         <h2>Análise da Dor</h2>
 
         <div class="field-group">
+          <label>Mapa corporal da dor</label>
+          <p class="body-map-hint">Clique na silhueta para marcar os pontos de dor. Clique no marcador para remover.</p>
+          <div class="body-map-container">
+            <img src="assets/Capturar.PNG" class="body-map-img" alt="Mapa corporal — anterior, posterior, lateral direita e esquerda"/>
+            <svg class="body-map-overlay" id="svgMapaCorporal" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <button type="button" class="body-map-clear" onclick="limparMapaCorporal()">Limpar marcadores</button>
+        </div>
+
+        <div class="field-group">
           <label>Intensidade da dor (EVA 0–10)</label>
           <div class="eva-buttons">
             <button type="button" class="eva-btn" data-val="0">0</button>
