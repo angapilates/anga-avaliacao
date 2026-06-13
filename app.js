@@ -189,4 +189,8 @@ function showToast(msg) {
 
 // ── Init ──────────────────────────────────────────────────────
 updateNav();
-document.getElementById('footerData').value = new Date().toLocaleDateString('pt-BR');
+const _today = new Date();
+const _yyyy = _today.getFullYear();
+const _mm = String(_today.getMonth() + 1).padStart(2, '0');
+const _dd = String(_today.getDate()).padStart(2, '0');
+document.getElementById('footerData').value = `${_yyyy}-${_mm}-${_dd}`;
