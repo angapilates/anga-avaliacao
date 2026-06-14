@@ -14,10 +14,15 @@
     </header>
 
     <div class="progress-row">
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-      <span class="section-label" id="sectionLabel">Seção 1 de 5</span>
+      <nav class="progress-segments" id="progressSegments" aria-label="Seções da avaliação">
+        <button class="progress-seg" data-section="1" onclick="goToSection(1)" title="1 · Anamnese"></button>
+        <button class="progress-seg" data-section="2" onclick="goToSection(2)" title="2 · Análise da Dor"></button>
+        <button class="progress-seg" data-section="3" onclick="goToSection(3)" title="3 · Análise Postural"></button>
+        <button class="progress-seg" data-section="4" onclick="goToSection(4)" title="4 · Cadeias Musculares"></button>
+        <button class="progress-seg" data-section="5" onclick="goToSection(5)" title="5 · Mobilidade e Estabilidade"></button>
+        <button class="progress-seg" data-section="6" onclick="goToSection(6)" title="6 · Plano de Tratamento"></button>
+      </nav>
+      <span class="section-label" id="sectionLabel">Seção 1 de 6</span>
     </div>
 
     <div class="card">
@@ -610,6 +615,33 @@
 
         <div class="confirm-box">
           <button type="button" class="btn-confirm" onclick="confirmarAvaliacao()">Confirmar avaliação completa ✓</button>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 6: PLANO DE TRATAMENTO -->
+      <section class="form-section" id="section6">
+        <h2>Plano de Tratamento</h2>
+        <p class="section-description">Gere um plano de tratamento personalizado consolidando todos os achados da avaliação. Edite livremente o texto sugerido antes de finalizar.</p>
+
+        <div class="plano-generate-box">
+          <button type="button" id="btnGerarPlano" class="btn-gerar-plano" onclick="gerarPlanoTratamento()">
+            Gerar Plano de Tratamento com IA
+          </button>
+          <p class="plano-hint">A IA consolidará os dados de anamnese, dor, postura, cadeias musculares e testes.</p>
+        </div>
+
+        <div id="planoResultWrapper" style="display:none">
+          <div class="field-group" style="margin-top:1.25rem">
+            <label>Plano de tratamento sugerido</label>
+            <p class="plano-hint" style="margin:0.25rem 0 0.6rem">Revise e edite o texto antes de finalizar a avaliação.</p>
+            <textarea id="planoTratamento" class="plano-textarea" rows="22" placeholder="O plano aparecerá aqui após a geração..."></textarea>
+          </div>
+        </div>
+
+        <div class="export-box">
+          <p class="export-desc">Após revisar todos os dados e o plano de tratamento, exporte a avaliação completa.</p>
+          <button type="button" class="btn-export-pdf" onclick="exportarPDF()">↓ Exportar avaliação como PDF</button>
+          <p class="plano-hint">O arquivo será nomeado <strong>avaliacao-[nome]-[data].pdf</strong></p>
         </div>
       </section>
 

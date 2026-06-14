@@ -1,5 +1,6 @@
-const TOTAL_SECTIONS = 5;
+const TOTAL_SECTIONS = 6;
 let currentSection = 1;
+let maxVisited = 1;
 const photoData = {};
 const testResults = {};
 
@@ -9,6 +10,17 @@ function navigate(dir) {
   if (next < 1 || next > TOTAL_SECTIONS) return;
   document.getElementById(`section${currentSection}`).classList.remove('active');
   currentSection = next;
+  if (currentSection > maxVisited) maxVisited = currentSection;
+  document.getElementById(`section${currentSection}`).classList.add('active');
+  updateNav();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToSection(n) {
+  if (n < 1 || n > TOTAL_SECTIONS) return;
+  document.getElementById(`section${currentSection}`).classList.remove('active');
+  currentSection = n;
+  if (currentSection > maxVisited) maxVisited = currentSection;
   document.getElementById(`section${currentSection}`).classList.add('active');
   updateNav();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -16,7 +28,16 @@ function navigate(dir) {
 
 function updateNav() {
   document.getElementById('sectionLabel').textContent = `Seção ${currentSection} de ${TOTAL_SECTIONS}`;
-  document.getElementById('progressFill').style.width = `${(currentSection / TOTAL_SECTIONS) * 100}%`;
+
+  document.querySelectorAll('.progress-seg').forEach(seg => {
+    const n = parseInt(seg.dataset.section);
+    seg.classList.remove('visited', 'current');
+    if (n === currentSection) {
+      seg.classList.add('current');
+    } else if (n <= maxVisited) {
+      seg.classList.add('visited');
+    }
+  });
 
   const back = document.getElementById('btnBack');
   const next = document.getElementById('btnNext');
@@ -30,7 +51,7 @@ function updateNav() {
 
   const apiRow = document.getElementById('apiKeyRow');
   if (apiRow) {
-    apiRow.style.display = (currentSection === 3 || currentSection === 4) ? 'block' : 'none';
+    apiRow.style.display = (currentSection === 3 || currentSection === 4 || currentSection === 6) ? 'block' : 'none';
   }
 }
 
@@ -239,10 +260,157 @@ async function analisarFoto(key) {
   }
 }
 
+// ── Coleta dados da avaliação ─────────────────────────────────
+function coletarDadosAvaliacao() {
+  const v   = id  => (document.getElementById(id)?.value       || '').trim();
+  const txt = id  => (document.getElementById(id)?.textContent || '').trim();
+  const lines = [];
+  const add = (label, value) => { if (value) lines.push(`${label}: ${value}`); };
+
+  lines.push('=== ANAMNESE ===');
+  add('Paciente',              v('nomeCompleto'));
+  add('Idade',                 v('idade'));
+  add('Profissão',             v('profissao'));
+  add('Objetivo',              v('objetivo'));
+  add('Queixa principal',      v('queixaPrincipal'));
+  add('HDA',                   v('hda'));
+  add('Diagnóstico clínico',   v('diagnostico'));
+  add('Classificação CBDF',    v('codigoCBDF'));
+  add('Exames complementares', v('exames'));
+  add('Antecedentes',          v('app'));
+  add('Outros sintomas',       v('outrosSintomas'));
+  add('Medicamentos',          v('medicamentos'));
+  add('AVDs',                  v('avds'));
+  add('Sono',                  v('sono'));
+  add('Alimentação',           v('alimentacao'));
+  add('Atividade física', document.querySelector('input[name="atividadeFisica"]:checked')?.value);
+  add('Outros hábitos',        v('outrosHabitos'));
+
+  lines.push('');
+  lines.push('=== ANÁLISE DA DOR ===');
+  const evaBtn = document.querySelector('.eva-btn.active');
+  if (evaBtn) add('EVA', `${evaBtn.dataset.val}/10 – ${txt('evaDesc')}`);
+  const nMarkers = document.querySelectorAll('.body-marker').length;
+  if (nMarkers) add('Mapa corporal', `${nMarkers} ponto(s) de dor marcado(s)`);
+  add('Frequência',  document.querySelector('.toggle-btn.active[data-group="frequencia"]')?.dataset.value);
+  const tipos = [...document.querySelectorAll('.toggle-btn.active[data-group="tipoDor"]')].map(b => b.dataset.value).join(', ');
+  add('Tipo de dor', tipos);
+  add('Piora com',   v('piora'));
+  add('Melhora com', v('melhora'));
+  add('Horário de maior intensidade', document.querySelector('.toggle-btn.active[data-group="horario"]')?.dataset.value);
+  const visVal = document.getElementById('horarioVisceral')?.value;
+  if (visVal && visVal !== '' && visVal !== 'nao-se-aplica') add('Horário visceral', txt('visceralCardBody') || visVal);
+
+  lines.push('');
+  lines.push('=== ANÁLISE POSTURAL ===');
+  ['Anterior', 'Posterior', 'LateralD', 'LateralE'].forEach(k => {
+    const el = document.getElementById(`result${k}`);
+    const t  = el?.textContent?.trim();
+    if (t && el.classList.contains('visible') && !t.startsWith('Analisando')) add(`Vista ${k}`, t);
+  });
+  add('Observações posturais', v('obsPostural'));
+
+  lines.push('');
+  lines.push('=== CADEIAS MUSCULARES ===');
+  ['Flexao','Extensao','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE'].forEach(k => {
+    const el = document.getElementById(`result${k}`);
+    const t  = el?.textContent?.trim();
+    if (t && el.classList.contains('visible') && !t.startsWith('Analisando')) add(k, t);
+  });
+  add('Observações cadeias',   v('obsCadeias'));
+  add('Função diafragmática',  v('diafragma'));
+  add('Transverso do abdômen', v('transverso'));
+
+  lines.push('');
+  lines.push('=== TESTES DE MOBILIDADE E ESTABILIDADE ===');
+  const entries = Object.entries(testResults);
+  if (entries.length) entries.forEach(([test, val]) => add(test, val));
+  add('Observações dos testes', v('obsTestes'));
+
+  return lines.join('\n');
+}
+
+// ── Gera plano de tratamento com IA ──────────────────────────
+async function gerarPlanoTratamento() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showToast('Insira a chave de API da Anthropic.'); return; }
+
+  const btn     = document.getElementById('btnGerarPlano');
+  const wrapper = document.getElementById('planoResultWrapper');
+  const ta      = document.getElementById('planoTratamento');
+
+  btn.disabled    = true;
+  btn.textContent = 'Gerando plano…';
+
+  const resumo = coletarDadosAvaliacao();
+  const prompt = `Com base nos achados desta avaliação fisioterapêutica de Pilates Clássico, sugira um plano de tratamento estruturado contendo: objetivos terapêuticos, exercícios recomendados com progressão (do mais simples ao mais avançado), frequência semanal sugerida, e pontos de atenção/contraindicações.
+
+DADOS DA AVALIAÇÃO:
+${resumo}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        max_tokens: 2500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    ta.value = data.content?.[0]?.text || 'Sem resposta.';
+    wrapper.style.display = 'block';
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    showToast(`Erro ao gerar plano: ${err.message}`);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Gerar Plano de Tratamento com IA';
+  }
+}
+
 // ── Confirm evaluation ────────────────────────────────────────
 function confirmarAvaliacao() {
   const nome = document.getElementById('nomeCompleto').value.trim() || 'Paciente';
   showToast(`Avaliação de ${nome} confirmada com sucesso!`);
+}
+
+// ── Exportar avaliação como PDF ───────────────────────────────
+function exportarPDF() {
+  const nome = (document.getElementById('nomeCompleto')?.value || '').trim();
+  const data = document.getElementById('footerData')?.value || '';
+
+  const nomeSlug = (nome || 'paciente')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  // YYYY-MM-DD → DD-MM-YYYY para o nome do arquivo
+  const dataSlug = data
+    ? data.split('-').reverse().join('-')
+    : new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+
+  const tituloOriginal = document.title;
+  document.title = `avaliacao-${nomeSlug}-${dataSlug}`;
+  document.body.classList.add('printing');
+
+  window.print();
+
+  document.body.classList.remove('printing');
+  document.title = tituloOriginal;
 }
 
 // ── Toast ─────────────────────────────────────────────────────

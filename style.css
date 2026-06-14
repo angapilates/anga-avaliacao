@@ -60,19 +60,29 @@ body {
   padding: 0.75rem 1.5rem;
   border-bottom: 1px solid var(--border);
 }
-.progress-bar {
+.progress-segments {
+  display: flex;
   flex: 1;
-  height: 4px;
-  background: var(--border);
-  border-radius: 999px;
-  overflow: hidden;
+  gap: 4px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
 }
-.progress-fill {
-  height: 100%;
+.progress-seg {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.25s ease, height 0.15s ease;
+}
+.progress-seg:hover { height: 8px; }
+.progress-seg.visited { background: #dfa080; }
+.progress-seg.current {
   background: var(--accent);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-  width: 20%;
+  height: 8px;
 }
 .section-label {
   font-size: 0.75rem;
@@ -716,4 +726,154 @@ textarea { resize: vertical; }
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* PLANO DE TRATAMENTO */
+.plano-generate-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.75rem 1rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--ai-bg);
+  text-align: center;
+}
+.btn-gerar-plano {
+  padding: 0.75rem 1.75rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn-gerar-plano:hover    { background: var(--accent-dark); }
+.btn-gerar-plano:disabled { opacity: 0.55; cursor: not-allowed; }
+.plano-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.plano-textarea {
+  min-height: 400px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+/* EXPORTAR PDF */
+.export-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+  padding: 1.5rem 1rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.export-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.btn-export-pdf {
+  padding: 0.65rem 1.5rem;
+  background: #1a1d23;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.01em;
+}
+.btn-export-pdf:hover { background: #333; }
+
+/* ── IMPRESSÃO / EXPORT PDF ─────────────────────────────── */
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body { background: #fff !important; }
+
+  /* Mostrar todas as seções */
+  .form-section,
+  .printing .form-section { display: block !important; }
+
+  /* Quebra de página entre seções */
+  .form-section + .form-section { page-break-before: always; break-before: page; }
+
+  /* Remover sombra e bordas do card */
+  .card {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ocultar elementos interativos */
+  .progress-row,
+  .nav-buttons,
+  .api-key-row,
+  .photo-actions,
+  .btn-ai,
+  .btn-secondary,
+  .btn-confirm,
+  .plano-generate-box,
+  .export-box,
+  .body-map-clear,
+  .btn-cbdf-link,
+  .visceral-card { display: none !important; }
+
+  /* Botões de seleção: mostrar só o ativo */
+  .toggle-btn:not(.active),
+  .eva-btn:not(.active),
+  .result-btn:not(.active) { display: none !important; }
+
+  .toggle-btn.active,
+  .eva-btn.active,
+  .result-btn.active {
+    display: inline-block !important;
+    background: #eee !important;
+    color: #000 !important;
+    border: 1px solid #aaa !important;
+    font-size: 0.8rem;
+  }
+
+  /* Inputs e textareas sem borda */
+  input, select, textarea {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    resize: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* Mapa corporal: imagem visível, marcadores visíveis */
+  .body-map-container { border: none !important; }
+  .body-map-img { max-height: 180px; width: auto; }
+  .body-map-overlay { display: block !important; }
+
+  /* Fotos */
+  .photo-preview.visible { display: block !important; max-height: 180px; width: auto; }
+
+  /* Resultados de IA */
+  .ai-result.visible { display: block !important; }
+
+  /* Plano textarea */
+  .plano-textarea { min-height: auto !important; }
+
+  /* Rodapé com logo */
+  .section-footer {
+    display: flex !important;
+    background: #1a1d23 !important;
+    page-break-inside: avoid;
+  }
 }
