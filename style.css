@@ -376,6 +376,28 @@ textarea { resize: vertical; }
   color: var(--accent);
 }
 
+/* CBDF INLINE */
+.cbdf-inline-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.cbdf-inline-row input { flex: 1; }
+.btn-cbdf-link {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 0.45rem 0.75rem;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.btn-cbdf-link:hover { border-color: var(--accent); }
+
 /* VISCERAL CARD */
 .visceral-card {
   margin-top: 0.6rem;
