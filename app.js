@@ -264,7 +264,7 @@ DIRETRIZES:
 
 6. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em tópicos claros com quebras de linha entre eles.
 
-7. Finalize com um parágrafo de <strong>Síntese</strong> integrando os principais achados desta vista.
+7. Finalize com um parágrafo de <strong>Análise</strong> integrando os principais achados desta vista.
 
 Responda em português.`;
 }
@@ -299,7 +299,7 @@ DIRETRIZES:
 
 6. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em tópicos claros com quebras de linha entre eles.
 
-7. Finalize com um parágrafo de <strong>Síntese</strong> sobre o padrão geral de tensão identificado neste movimento.
+7. Finalize com um parágrafo de <strong>Análise</strong> sobre o padrão geral de tensão identificado neste movimento.
 
 Responda em português.`;
 }
@@ -467,7 +467,7 @@ DIRETRIZES PARA O PLANO:
    — <strong>Frequência semanal e duração estimada do programa.</strong>
    — <strong>Pontos de atenção e contraindicações</strong> — derivados do diagnóstico e dos achados clínicos.
 
-4. Finalize com uma <strong>Síntese das prioridades para as primeiras sessões.</strong>
+4. Finalize com uma <strong>Análise das prioridades para as primeiras sessões.</strong>
 
 5. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em seções claras com quebras de linha entre elas.
 
