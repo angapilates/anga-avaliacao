@@ -245,6 +245,8 @@ function buildPosturalPrompt(vista, ctx) {
 
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
+<strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
+
 DIRETRIZES:
 
 1. Descreva apenas o que é efetivamente visível na imagem. Se algum achado não for claramente observável, declare isso explicitamente. Nunca invente ou presuma informações ausentes.
@@ -277,6 +279,8 @@ function buildChainPrompt(movimento, ctx) {
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
+<strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
+
 DIRETRIZES:
 
 1. Descreva apenas o que é efetivamente visível na imagem. Se algum achado não for claramente observável, declare isso explicitamente. Nunca invente ou presuma informações ausentes.
@@ -332,7 +336,7 @@ async function analisarFoto(key) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-8',
-        max_tokens: 1800,
+        max_tokens: 4096,
         messages: [{
           role: 'user',
           content: [
@@ -351,6 +355,7 @@ async function analisarFoto(key) {
     const data = await resp.json();
     const text = data.content?.[0]?.text || 'Sem resposta.';
     resultEl.className = 'ai-result visible';
+    resultEl.contentEditable = 'true';
     resultEl.innerHTML = text.replace(/\n/g, '<br>');
   } catch (err) {
     resultEl.className = 'ai-result visible';
@@ -444,6 +449,8 @@ async function gerarPlanoTratamento() {
   const resumo = coletarDadosAvaliacao();
   const prompt = `Você é um fisioterapeuta especialista em Pilates Clínico. Com base nos dados desta avaliação fisioterapêutica, elabore um plano de tratamento estruturado.
 
+<strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
+
 DADOS DA AVALIAÇÃO:
 ${resumo}
 
@@ -477,7 +484,7 @@ Responda em português.`;
       },
       body: JSON.stringify({
         model: 'claude-opus-4-8',
-        max_tokens: 2500,
+        max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }]
       })
     });
