@@ -170,21 +170,40 @@ document.addEventListener('click', e => {
 });
 
 // ── Photo handling ────────────────────────────────────────────
-function handlePhoto(input, key) {
-  const file = input.files[0];
-  if (!file) return;
+function isHeicFile(file) {
+  return /\.(heic|heif)$/i.test(file.name) ||
+    file.type === 'image/heic' ||
+    file.type === 'image/heif';
+}
+
+function storePhoto(key, file) {
   const reader = new FileReader();
   reader.onload = ev => {
     photoData[key] = { dataUrl: ev.target.result, base64: ev.target.result.split(',')[1], mimeType: file.type };
     const preview = document.getElementById(`preview${key}`);
     const placeholder = document.getElementById(`placeholder${key}`);
-    if (preview) {
-      preview.src = ev.target.result;
-      preview.classList.add('visible');
-    }
+    if (preview) { preview.src = ev.target.result; preview.classList.add('visible'); }
     if (placeholder) placeholder.classList.add('hidden');
   };
   reader.readAsDataURL(file);
+}
+
+async function handlePhoto(input, key) {
+  let file = input.files[0];
+  if (!file) return;
+
+  if (isHeicFile(file)) {
+    showToast('Convertendo HEIC para JPEG…');
+    try {
+      const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.88 });
+      file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+    } catch (err) {
+      showToast(`Erro ao converter HEIC: ${err.message}`);
+      return;
+    }
+  }
+
+  storePhoto(key, file);
 }
 
 // ── AI Photo Analysis ─────────────────────────────────────────
