@@ -455,31 +455,29 @@ async function gerarPlanoTratamento() {
   btn.textContent = 'Gerando plano…';
 
   const resumo = coletarDadosAvaliacao();
-  const prompt = `Você é um fisioterapeuta especialista em Pilates Clínico. Com base nos dados desta avaliação fisioterapêutica, elabore um plano de tratamento estruturado.
+  const prompt = `Você é fisioterapeuta especialista em Pilates Clínico. Elabore o plano de tratamento abaixo com base exclusivamente nos dados fornecidos.
 
-<strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
+Regras de formatação: sem markdown, sem asteriscos, sem emojis, sem frases introdutórias como "Aqui está o plano" ou similares. Inicie direto pelo primeiro título. Use os títulos exatamente como indicados abaixo, em letras maiúsculas, seguidos de dois-pontos e quebra de linha. Texto corrido e objetivo, como documento clínico para impressão.
 
 DADOS DA AVALIAÇÃO:
 ${resumo}
 
-DIRETRIZES PARA O PLANO:
+Estrutura obrigatória (use exatamente estes títulos):
 
-1. Utilize exclusivamente os dados fornecidos acima. Não presuma informações ausentes, não invente achados. Se algum dado relevante estiver ausente, indique que aquela parte da análise fica prejudicada por falta de informação.
+OBJETIVOS TERAPÊUTICOS:
 
-2. Relacione cada proposta terapêutica diretamente a um achado clínico ou postural presente nos dados.
+FUNDAMENTAÇÃO CLÍNICA:
 
-3. Estruture o plano em:
-   — <strong>Objetivos terapêuticos</strong> — derivados da queixa e dos achados.
-   — <strong>Fundamentação clínica</strong> — princípios biomecânicos e de cadeias musculares que embasam as escolhas.
-   — <strong>Exercícios recomendados com progressão</strong> — do mais básico ao mais avançado, justificando cada etapa com base nos achados.
-   — <strong>Frequência semanal e duração estimada do programa.</strong>
-   — <strong>Pontos de atenção e contraindicações</strong> — derivados do diagnóstico e dos achados clínicos.
+EXERCÍCIOS RECOMENDADOS:
+(progressão do básico ao avançado; justifique cada fase com base nos achados)
 
-4. Finalize com uma <strong>Análise das prioridades para as primeiras sessões.</strong>
+FREQUÊNCIA SEMANAL E DURAÇÃO:
 
-5. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em seções claras com quebras de linha entre elas.
+PONTOS DE ATENÇÃO E CONTRAINDICAÇÕES:
 
-Responda em português.`;
+PRIORIDADES PARA AS PRIMEIRAS SESSÕES:
+
+Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante estiver ausente, indique que a análise fica prejudicada. Não invente achados. Responda em português.`;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -515,69 +513,6 @@ Responda em português.`;
   }
 }
 
-// ── Lista de exercícios para Vedius ──────────────────────────
-async function gerarListaExercicios() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) { showToast('Insira a chave de API da Anthropic.'); return; }
-
-  const planoText = document.getElementById('planoTratamento').innerText.trim();
-  if (!planoText) { showToast('Gere o plano de tratamento primeiro.'); return; }
-
-  const btn     = document.getElementById('btnGerarLista');
-  const wrapper = document.getElementById('listaExerciciosWrapper');
-  const lista   = document.getElementById('listaExercicios');
-
-  btn.disabled    = true;
-  btn.textContent = 'Gerando lista…';
-
-  const localInfo = localExercicio === 'academia'
-    ? 'O paciente treina na academia/estúdio. Pode incluir exercícios com equipamentos como reformer ou cadillac.'
-    : 'O paciente treina em casa. Sugerir apenas exercícios sem equipamentos de estúdio como reformer ou cadillac.';
-
-  const prompt = `Com base neste plano de tratamento, liste os exercícios sugeridos usando nomenclatura padrão em português para Pilates Clássico, no formato Nome base + variação (por exemplo: Ponte + abdução de quadril com elástico). ${localInfo}
-
-PLANO DE TRATAMENTO:
-${planoText}
-
-Retorne apenas a lista de exercícios, um por linha, sem numeração, sem títulos adicionais.`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-8',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Erro ${resp.status}`);
-    }
-
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || '';
-    const lines = text.split('\n')
-      .map(l => l.trim()).filter(Boolean)
-      .map(l => l.replace(/^[-•*]\s*/, '').replace(/^\d+[.)]\s*/, ''));
-    lista.innerHTML = lines.map(l => `• ${l}`).join('<br>');
-    wrapper.style.display = 'block';
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (err) {
-    showToast(`Erro ao gerar lista: ${err.message}`);
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = 'Gerar lista de exercícios';
-  }
-}
-
 // ── Confirm evaluation ────────────────────────────────────────
 function confirmarAvaliacao() {
   const nome = document.getElementById('nomeCompleto').value.trim() || 'Paciente';
@@ -602,6 +537,12 @@ async function exportarPDF() {
   const filename = `avaliacao-${nomeSlug}-${dataSlug}.pdf`;
 
   const btn = document.querySelector('.btn-export-pdf');
+
+  if (!window.html2canvas || !window.jspdf) {
+    showToast('Bibliotecas de PDF não carregadas. Recarregue a página.');
+    return;
+  }
+
   btn.disabled = true;
   showToast('Gerando PDF…');
 
@@ -609,10 +550,10 @@ async function exportarPDF() {
   const sections = [...document.querySelectorAll('.form-section')];
   const hideEls  = [...document.querySelectorAll(
     '.progress-row, .nav-buttons, .api-key-row, .photo-actions, ' +
-    '.btn-confirm, .plano-generate-box, .export-box, ' +
+    '.plano-generate-box, .export-box, ' +
     '.body-map-clear, .btn-cbdf-link, .visceral-card, ' +
     '.toggle-btn:not(.active), .eva-btn:not(.active), .result-btn:not(.active), ' +
-    '.local-btn:not(.active), #btnGerarLista'
+    '.local-btn:not(.active)'
   )];
 
   sections.forEach(s => (s.style.display = 'block'));
@@ -625,7 +566,6 @@ async function exportarPDF() {
     const canvas = await html2canvas(document.querySelector('.app'), {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
     });
@@ -641,13 +581,16 @@ async function exportarPDF() {
 
     let srcY = 0;
     while (srcY < canvas.height) {
-      const sliceH = Math.min(pageHpx, canvas.height - srcY);
-      const slice  = document.createElement('canvas');
+      const sliceH    = Math.min(pageHpx, canvas.height - srcY);
+      const srcYInt   = Math.floor(srcY);
+      const sliceHInt = Math.min(Math.ceil(sliceH), canvas.height - srcYInt);
+
+      const slice = document.createElement('canvas');
       slice.width  = canvas.width;
-      slice.height = Math.round(sliceH);
+      slice.height = sliceHInt;
       slice.getContext('2d').drawImage(
-        canvas, 0, Math.round(srcY), canvas.width, Math.round(sliceH),
-        0, 0, canvas.width, Math.round(sliceH)
+        canvas, 0, srcYInt, canvas.width, sliceHInt,
+        0, 0,     canvas.width, sliceHInt
       );
       pdf.addImage(slice.toDataURL('image/jpeg', 0.88), 'JPEG', margin, margin, printW, sliceH / pxPerMm);
       srcY += pageHpx;

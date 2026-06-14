@@ -613,9 +613,6 @@
           <textarea id="obsTestes" rows="3" placeholder="Observações clínicas relevantes..."></textarea>
         </div>
 
-        <div class="confirm-box">
-          <button type="button" class="btn-confirm" onclick="confirmarAvaliacao()">Confirmar avaliação completa ✓</button>
-        </div>
       </section>
 
       <!-- SEÇÃO 6: PLANO DE TRATAMENTO -->
@@ -645,19 +642,10 @@
             <div id="planoTratamento" contenteditable="true" class="plano-textarea" data-placeholder="O plano aparecerá aqui após a geração…"></div>
           </div>
 
-          <div class="vedius-lista-section">
-            <h3>Lista de exercícios para busca na Vedius</h3>
-            <button type="button" id="btnGerarLista" class="btn-gerar-lista" onclick="gerarListaExercicios()">
-              Gerar lista de exercícios
-            </button>
-            <div id="listaExerciciosWrapper" style="display:none">
-              <div id="listaExercicios" contenteditable="true" class="lista-exercicios-area" data-placeholder="A lista aparecerá aqui…"></div>
-            </div>
-          </div>
         </div>
 
         <div class="field-group vedius-field">
-          <label>Link do programa na Vedius</label>
+          <label>Link do Programa Terapêutico na Vedius</label>
           <input type="text" id="linkVedius" placeholder="Cole aqui o link do programa de exercícios criado na Vedius" />
         </div>
 
