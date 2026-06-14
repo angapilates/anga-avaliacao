@@ -514,9 +514,9 @@ function confirmarAvaliacao() {
 }
 
 // ── Exportar avaliação como PDF ───────────────────────────────
-function exportarPDF() {
-  const nome = (document.getElementById('nomeCompleto')?.value || '').trim();
-  const data = document.getElementById('footerData')?.value || '';
+async function exportarPDF() {
+  const nome    = (document.getElementById('nomeCompleto')?.value || '').trim();
+  const dataVal = document.getElementById('footerData')?.value || '';
 
   const nomeSlug = (nome || 'paciente')
     .toLowerCase()
@@ -524,19 +524,74 @@ function exportarPDF() {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  // YYYY-MM-DD → DD-MM-YYYY para o nome do arquivo
-  const dataSlug = data
-    ? data.split('-').reverse().join('-')
+  const dataSlug = dataVal
+    ? dataVal.split('-').reverse().join('-')
     : new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
 
-  const tituloOriginal = document.title;
-  document.title = `avaliacao-${nomeSlug}-${dataSlug}`;
-  document.body.classList.add('printing');
+  const filename = `avaliacao-${nomeSlug}-${dataSlug}.pdf`;
 
-  window.print();
+  const btn = document.querySelector('.btn-export-pdf');
+  btn.disabled = true;
+  showToast('Gerando PDF…');
 
-  document.body.classList.remove('printing');
-  document.title = tituloOriginal;
+  // Mostrar todas as seções e ocultar elementos interativos para a captura
+  const sections = [...document.querySelectorAll('.form-section')];
+  const hideEls  = [...document.querySelectorAll(
+    '.progress-row, .nav-buttons, .api-key-row, .photo-actions, ' +
+    '.btn-confirm, .plano-generate-box, .export-box, ' +
+    '.body-map-clear, .btn-cbdf-link, .visceral-card, ' +
+    '.toggle-btn:not(.active), .eva-btn:not(.active), .result-btn:not(.active)'
+  )];
+
+  sections.forEach(s => (s.style.display = 'block'));
+  hideEls.forEach(el => (el.style.display = 'none'));
+
+  // Aguardar o browser aplicar o layout
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  try {
+    const canvas = await html2canvas(document.querySelector('.app'), {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf     = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW   = pdf.internal.pageSize.getWidth();   // 210 mm
+    const pageH   = pdf.internal.pageSize.getHeight();  // 297 mm
+    const margin  = 10;
+    const printW  = pageW - 2 * margin;                 // 190 mm
+    const pxPerMm = canvas.width / printW;
+    const pageHpx = (pageH - 2 * margin) * pxPerMm;    // altura de página em px
+
+    let srcY = 0;
+    while (srcY < canvas.height) {
+      const sliceH = Math.min(pageHpx, canvas.height - srcY);
+      const slice  = document.createElement('canvas');
+      slice.width  = canvas.width;
+      slice.height = Math.round(sliceH);
+      slice.getContext('2d').drawImage(
+        canvas, 0, Math.round(srcY), canvas.width, Math.round(sliceH),
+        0, 0, canvas.width, Math.round(sliceH)
+      );
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.88), 'JPEG', margin, margin, printW, sliceH / pxPerMm);
+      srcY += pageHpx;
+      if (srcY < canvas.height) pdf.addPage();
+    }
+
+    pdf.save(filename);
+    showToast('PDF baixado com sucesso!');
+  } catch (err) {
+    showToast(`Erro ao gerar PDF: ${err.message}`);
+  } finally {
+    // Restaurar visibilidade controlada pelo CSS
+    sections.forEach(s => (s.style.display = ''));
+    hideEls.forEach(el => (el.style.display = ''));
+    btn.disabled = false;
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────
