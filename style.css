@@ -764,6 +764,25 @@ textarea { resize: vertical; }
   font-family: inherit;
   font-size: 0.88rem;
   line-height: 1.7;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: #fff;
+  transition: border-color 0.15s;
+  cursor: text;
+  outline: none;
+}
+.plano-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(194,86,9,0.12);
+}
+.plano-textarea:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  font-style: italic;
 }
 
 /* EXPORTAR PDF */
@@ -845,8 +864,8 @@ textarea { resize: vertical; }
     font-size: 0.8rem;
   }
 
-  /* Inputs e textareas sem borda */
-  input, select, textarea {
+  /* Inputs, textareas e plano de tratamento sem borda */
+  input, select, textarea, .plano-textarea {
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;

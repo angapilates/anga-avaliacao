@@ -207,19 +207,98 @@ async function handlePhoto(input, key) {
 }
 
 // ── AI Photo Analysis ─────────────────────────────────────────
-const POSTURAL_PROMPT = `Você é um fisioterapeuta especialista em análise postural. Analise esta imagem do paciente e forneça:
-1. Alinhamento geral (cabeça, ombros, pelve, joelhos, pés)
-2. Assimetrias visíveis
-3. Padrões posturais identificados
-4. Possíveis compensações
-Seja objetivo e use terminologia clínica. Responda em português.`;
+const VIEW_LABELS = {
+  Anterior:   'Vista Anterior',
+  Posterior:  'Vista Posterior',
+  LateralD:   'Vista Lateral Direita',
+  LateralE:   'Vista Lateral Esquerda',
+  Flexao:     'Flexão Global',
+  Extensao:   'Extensão Global',
+  FlexaoLatD: 'Flexão Lateral Direita',
+  FlexaoLatE: 'Flexão Lateral Esquerda',
+  RotacaoD:   'Rotação Direita',
+  RotacaoE:   'Rotação Esquerda',
+};
+const CHAIN_KEYS = new Set(['Flexao', 'Extensao', 'FlexaoLatD', 'FlexaoLatE', 'RotacaoD', 'RotacaoE']);
 
-const CHAIN_PROMPT = `Você é um fisioterapeuta especialista em cadeias musculares (Busquet/Myers). Analise este movimento e forneça:
-1. Padrões de tensão identificados
-2. Cadeias musculares envolvidas
-3. Compensações observadas
-4. Achados clínicos relevantes
-Seja objetivo e use terminologia clínica. Responda em português.`;
+function coletarContextoClinico() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const parts = [];
+  const add = (label, val) => { if (val) parts.push(`${label}: ${val}`); };
+  add('Objetivo terapêutico', v('objetivo'));
+  add('Queixa principal', v('queixaPrincipal'));
+  add('História da doença atual', v('hda'));
+  add('Diagnóstico clínico', v('diagnostico'));
+  add('O que piora', v('piora'));
+  add('O que melhora', v('melhora'));
+  add('Antecedentes patológicos', v('app'));
+  return parts.join('\n');
+}
+
+function buildPosturalPrompt(vista, ctx) {
+  const ctxBlock = ctx
+    ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
+    : '';
+  const dir3 = ctx
+    ? 'Cruze explicitamente os dados clínicos fornecidos com os achados visuais — se o paciente relata dor em determinada região e há uma alteração postural correspondente visível, conecte os dois de forma fundamentada.'
+    : 'Limite a análise ao que é efetivamente visível na imagem.';
+
+  return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
+${ctxBlock}
+DIRETRIZES:
+
+1. Descreva apenas o que é efetivamente visível na imagem. Se algum achado não for claramente observável, declare isso explicitamente. Nunca invente ou presuma informações ausentes.
+
+2. Para cada alteração identificada, estruture a análise em três partes:
+   — <strong>Achado visual:</strong> descrição objetiva e precisa (ex.: anteriorização da cabeça, elevação do ombro direito, hiperlordose lombar acentuada).
+   — <strong>Causas biomecânicas e musculares prováveis:</strong> quais estruturas estão provavelmente envolvidas com base no padrão observado.
+   — <strong>Consequências funcionais e sintomatológicas:</strong> sobrecargas articulares, compensações em cadeia, possíveis dores e limitações decorrentes.
+
+3. ${dir3}
+
+4. Para cada alteração, inclua uma <strong>sugestão breve de abordagem pelo movimento</strong> (ex.: mobilização articular, fortalecimento de estabilizadores, alongamento de cadeias anteriores, reeducação respiratória) — sem detalhar exercícios específicos, pois o plano completo é gerado em outra etapa.
+
+5. Utilize como referencial as cadeias musculares e os trilhos anatômicos. Não cite autores, livros ou obras no texto gerado.
+
+6. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em tópicos claros com quebras de linha entre eles.
+
+7. Finalize com um parágrafo de <strong>Síntese</strong> integrando os principais achados desta vista.
+
+Responda em português.`;
+}
+
+function buildChainPrompt(movimento, ctx) {
+  const ctxBlock = ctx
+    ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
+    : '';
+  const dir3 = ctx
+    ? 'Cruze explicitamente os dados clínicos fornecidos com os achados visuais — se o paciente relata dor em determinada região e há tensão ou limitação correspondente visível, conecte os dois de forma fundamentada.'
+    : 'Limite a análise ao que é efetivamente visível na imagem.';
+
+  return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
+${ctxBlock}
+DIRETRIZES:
+
+1. Descreva apenas o que é efetivamente visível na imagem. Se algum achado não for claramente observável, declare isso explicitamente. Nunca invente ou presuma informações ausentes.
+
+2. Para cada achado identificado, estruture a análise em quatro partes:
+   — <strong>Localização exata:</strong> descreva com precisão a região anatômica onde a tensão, encurtamento, retificação ou curva excessiva é observada (ex.: retificação da lordose lombar, tensão no terço superior do trapézio direito, limitação na cadeia posterior a partir dos isquiotibiais bilateralmente).
+   — <strong>Cadeias e trilhos envolvidos:</strong> identifique quais cadeias musculares e trilhos anatômicos estão manifestando tensão ou insuficiência com base no padrão observado.
+   — <strong>Causas biomecânicas prováveis:</strong> mecanismos musculares e articulares geradores do padrão identificado.
+   — <strong>Consequências funcionais e sintomatológicas:</strong> sobrecargas, compensações em cadeia, possíveis dores e limitações decorrentes.
+
+3. ${dir3}
+
+4. Para cada achado, inclua uma <strong>sugestão breve de abordagem pelo movimento</strong> — sem detalhar exercícios específicos, pois o plano completo é gerado em outra etapa.
+
+5. Utilize como referencial as cadeias musculares e os trilhos anatômicos. Não cite autores, livros ou obras no texto gerado.
+
+6. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em tópicos claros com quebras de linha entre eles.
+
+7. Finalize com um parágrafo de <strong>Síntese</strong> sobre o padrão geral de tensão identificado neste movimento.
+
+Responda em português.`;
+}
 
 async function analisarFoto(key) {
   const apiKey = document.getElementById('apiKey').value.trim();
@@ -233,8 +312,9 @@ async function analisarFoto(key) {
   }
 
   const resultEl = document.getElementById(`result${key}`);
-  const isChain = ['Flexao', 'Extensao'].includes(key);
-  const prompt = isChain ? CHAIN_PROMPT : POSTURAL_PROMPT;
+  const ctx    = coletarContextoClinico();
+  const vista  = VIEW_LABELS[key] || key;
+  const prompt = CHAIN_KEYS.has(key) ? buildChainPrompt(vista, ctx) : buildPosturalPrompt(vista, ctx);
 
   resultEl.className = 'ai-result visible loading';
   resultEl.textContent = 'Analisando com IA...';
@@ -252,7 +332,7 @@ async function analisarFoto(key) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-8',
-        max_tokens: 800,
+        max_tokens: 1800,
         messages: [{
           role: 'user',
           content: [
@@ -271,11 +351,11 @@ async function analisarFoto(key) {
     const data = await resp.json();
     const text = data.content?.[0]?.text || 'Sem resposta.';
     resultEl.className = 'ai-result visible';
-    resultEl.textContent = text;
+    resultEl.innerHTML = text.replace(/\n/g, '<br>');
   } catch (err) {
     resultEl.className = 'ai-result visible';
     resultEl.style.color = '#dc2626';
-    resultEl.textContent = `Erro: ${err.message}`;
+    resultEl.innerHTML = `Erro: ${err.message}`;
   }
 }
 
@@ -362,10 +442,29 @@ async function gerarPlanoTratamento() {
   btn.textContent = 'Gerando plano…';
 
   const resumo = coletarDadosAvaliacao();
-  const prompt = `Com base nos achados desta avaliação fisioterapêutica de Pilates Clássico, sugira um plano de tratamento estruturado contendo: objetivos terapêuticos, exercícios recomendados com progressão (do mais simples ao mais avançado), frequência semanal sugerida, e pontos de atenção/contraindicações.
+  const prompt = `Você é um fisioterapeuta especialista em Pilates Clínico. Com base nos dados desta avaliação fisioterapêutica, elabore um plano de tratamento estruturado.
 
 DADOS DA AVALIAÇÃO:
-${resumo}`;
+${resumo}
+
+DIRETRIZES PARA O PLANO:
+
+1. Utilize exclusivamente os dados fornecidos acima. Não presuma informações ausentes, não invente achados. Se algum dado relevante estiver ausente, indique que aquela parte da análise fica prejudicada por falta de informação.
+
+2. Relacione cada proposta terapêutica diretamente a um achado clínico ou postural presente nos dados.
+
+3. Estruture o plano em:
+   — <strong>Objetivos terapêuticos</strong> — derivados da queixa e dos achados.
+   — <strong>Fundamentação clínica</strong> — princípios biomecânicos e de cadeias musculares que embasam as escolhas.
+   — <strong>Exercícios recomendados com progressão</strong> — do mais básico ao mais avançado, justificando cada etapa com base nos achados.
+   — <strong>Frequência semanal e duração estimada do programa.</strong>
+   — <strong>Pontos de atenção e contraindicações</strong> — derivados do diagnóstico e dos achados clínicos.
+
+4. Finalize com uma <strong>Síntese das prioridades para as primeiras sessões.</strong>
+
+5. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em seções claras com quebras de linha entre elas.
+
+Responda em português.`;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -389,7 +488,8 @@ ${resumo}`;
     }
 
     const data = await resp.json();
-    ta.value = data.content?.[0]?.text || 'Sem resposta.';
+    const planText = data.content?.[0]?.text || 'Sem resposta.';
+    ta.innerHTML = planText.replace(/\n/g, '<br>');
     wrapper.style.display = 'block';
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
