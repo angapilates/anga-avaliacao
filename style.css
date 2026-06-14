@@ -734,6 +734,33 @@ textarea { resize: vertical; }
   transform: translateX(-50%) translateY(0);
 }
 
+/* LOCAL DE EXERCÍCIO */
+.local-exercicio-btns {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.local-btn {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.65rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.local-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+.local-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
 /* PLANO DE TRATAMENTO */
 .plano-generate-box {
   display: flex;

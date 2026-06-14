@@ -623,6 +623,14 @@
         <h2>Plano de Tratamento</h2>
         <p class="section-description">Gere um plano de tratamento personalizado consolidando todos os achados da avaliação. Edite livremente o texto sugerido antes de finalizar.</p>
 
+        <div class="field-group">
+          <label>Local de prática dos exercícios</label>
+          <div class="local-exercicio-btns">
+            <button type="button" class="local-btn" id="btnCasa" onclick="selecionarLocal('casa')">Exercícios em casa</button>
+            <button type="button" class="local-btn" id="btnAcademia" onclick="selecionarLocal('academia')">Exercícios na academia / estúdio (com equipamentos)</button>
+          </div>
+        </div>
+
         <div class="plano-generate-box">
           <button type="button" id="btnGerarPlano" class="btn-gerar-plano" onclick="gerarPlanoTratamento()">
             Gerar Plano de Tratamento com IA
@@ -636,6 +644,11 @@
             <p class="plano-hint" style="margin:0.25rem 0 0.6rem">Revise e edite o texto antes de finalizar a avaliação.</p>
             <div id="planoTratamento" contenteditable="true" class="plano-textarea" data-placeholder="O plano aparecerá aqui após a geração…"></div>
           </div>
+        </div>
+
+        <div class="field-group vedius-field">
+          <label>Link do programa na Vedius</label>
+          <input type="text" id="linkVedius" placeholder="Cole aqui o link do programa de exercícios criado na Vedius" />
         </div>
 
         <div class="export-box">

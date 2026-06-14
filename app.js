@@ -1,6 +1,7 @@
 const TOTAL_SECTIONS = 6;
 let currentSection = 1;
 let maxVisited = 1;
+let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 const testResults = {};
 
@@ -53,6 +54,13 @@ function updateNav() {
   if (apiRow) {
     apiRow.style.display = (currentSection === 3 || currentSection === 4 || currentSection === 6) ? 'block' : 'none';
   }
+}
+
+// ── Local de exercício ────────────────────────────────────────
+function selecionarLocal(local) {
+  localExercicio = local;
+  document.getElementById('btnCasa').classList.toggle('active', local === 'casa');
+  document.getElementById('btnAcademia').classList.toggle('active', local === 'academia');
 }
 
 // ── EVA Scale ────────────────────────────────────────────────
@@ -540,7 +548,8 @@ async function exportarPDF() {
     '.progress-row, .nav-buttons, .api-key-row, .photo-actions, ' +
     '.btn-confirm, .plano-generate-box, .export-box, ' +
     '.body-map-clear, .btn-cbdf-link, .visceral-card, ' +
-    '.toggle-btn:not(.active), .eva-btn:not(.active), .result-btn:not(.active)'
+    '.toggle-btn:not(.active), .eva-btn:not(.active), .result-btn:not(.active), ' +
+    '.local-btn:not(.active)'
   )];
 
   sections.forEach(s => (s.style.display = 'block'));
