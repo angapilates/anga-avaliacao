@@ -818,6 +818,52 @@ textarea { resize: vertical; }
   font-style: italic;
 }
 
+/* LISTA DE EXERCÍCIOS VEDIUS */
+.vedius-lista-section {
+  margin-top: 1.75rem;
+}
+.btn-gerar-lista {
+  display: inline-block;
+  padding: 0.55rem 1.25rem;
+  background: #fff;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  margin-bottom: 0.75rem;
+}
+.btn-gerar-lista:hover { background: var(--primary-light); }
+.btn-gerar-lista:disabled { opacity: 0.55; cursor: not-allowed; }
+.lista-exercicios-area {
+  min-height: 120px;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.9;
+  transition: border-color 0.15s;
+  cursor: text;
+  outline: none;
+}
+.lista-exercicios-area:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(194,86,9,0.12);
+}
+.lista-exercicios-area:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  font-style: italic;
+}
+
 /* EXPORTAR PDF */
 .export-box {
   display: flex;
@@ -897,8 +943,8 @@ textarea { resize: vertical; }
     font-size: 0.8rem;
   }
 
-  /* Inputs, textareas e plano de tratamento sem borda */
-  input, select, textarea, .plano-textarea {
+  /* Inputs, textareas e áreas editáveis sem borda */
+  input, select, textarea, .plano-textarea, .lista-exercicios-area {
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;
@@ -919,8 +965,8 @@ textarea { resize: vertical; }
   /* Resultados de IA */
   .ai-result.visible { display: block !important; }
 
-  /* Plano textarea */
-  .plano-textarea { min-height: auto !important; }
+  /* Áreas editáveis */
+  .plano-textarea, .lista-exercicios-area { min-height: auto !important; }
 
   /* Rodapé com logo */
   .section-footer {

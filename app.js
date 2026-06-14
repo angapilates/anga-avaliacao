@@ -515,6 +515,69 @@ Responda em português.`;
   }
 }
 
+// ── Lista de exercícios para Vedius ──────────────────────────
+async function gerarListaExercicios() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showToast('Insira a chave de API da Anthropic.'); return; }
+
+  const planoText = document.getElementById('planoTratamento').innerText.trim();
+  if (!planoText) { showToast('Gere o plano de tratamento primeiro.'); return; }
+
+  const btn     = document.getElementById('btnGerarLista');
+  const wrapper = document.getElementById('listaExerciciosWrapper');
+  const lista   = document.getElementById('listaExercicios');
+
+  btn.disabled    = true;
+  btn.textContent = 'Gerando lista…';
+
+  const localInfo = localExercicio === 'academia'
+    ? 'O paciente treina na academia/estúdio. Pode incluir exercícios com equipamentos como reformer ou cadillac.'
+    : 'O paciente treina em casa. Sugerir apenas exercícios sem equipamentos de estúdio como reformer ou cadillac.';
+
+  const prompt = `Com base neste plano de tratamento, liste os exercícios sugeridos usando nomenclatura padrão em português para Pilates Clássico, no formato Nome base + variação (por exemplo: Ponte + abdução de quadril com elástico). ${localInfo}
+
+PLANO DE TRATAMENTO:
+${planoText}
+
+Retorne apenas a lista de exercícios, um por linha, sem numeração, sem títulos adicionais.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-8',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    const lines = text.split('\n')
+      .map(l => l.trim()).filter(Boolean)
+      .map(l => l.replace(/^[-•*]\s*/, '').replace(/^\d+[.)]\s*/, ''));
+    lista.innerHTML = lines.map(l => `• ${l}`).join('<br>');
+    wrapper.style.display = 'block';
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    showToast(`Erro ao gerar lista: ${err.message}`);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Gerar lista de exercícios';
+  }
+}
+
 // ── Confirm evaluation ────────────────────────────────────────
 function confirmarAvaliacao() {
   const nome = document.getElementById('nomeCompleto').value.trim() || 'Paciente';
@@ -549,7 +612,7 @@ async function exportarPDF() {
     '.btn-confirm, .plano-generate-box, .export-box, ' +
     '.body-map-clear, .btn-cbdf-link, .visceral-card, ' +
     '.toggle-btn:not(.active), .eva-btn:not(.active), .result-btn:not(.active), ' +
-    '.local-btn:not(.active)'
+    '.local-btn:not(.active), #btnGerarLista'
   )];
 
   sections.forEach(s => (s.style.display = 'block'));

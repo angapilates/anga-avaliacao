@@ -644,6 +644,16 @@
             <p class="plano-hint" style="margin:0.25rem 0 0.6rem">Revise e edite o texto antes de finalizar a avaliação.</p>
             <div id="planoTratamento" contenteditable="true" class="plano-textarea" data-placeholder="O plano aparecerá aqui após a geração…"></div>
           </div>
+
+          <div class="vedius-lista-section">
+            <h3>Lista de exercícios para busca na Vedius</h3>
+            <button type="button" id="btnGerarLista" class="btn-gerar-lista" onclick="gerarListaExercicios()">
+              Gerar lista de exercícios
+            </button>
+            <div id="listaExerciciosWrapper" style="display:none">
+              <div id="listaExercicios" contenteditable="true" class="lista-exercicios-area" data-placeholder="A lista aparecerá aqui…"></div>
+            </div>
+          </div>
         </div>
 
         <div class="field-group vedius-field">
