@@ -36,6 +36,26 @@ body {
 .app-header {
   background: #000000;
   padding: 1.25rem 1.5rem 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.btn-nova-avaliacao {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9ca3af;
+  background: transparent;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-nova-avaliacao:hover {
+  color: #fff;
+  border-color: #6b7280;
 }
 .header-brand {
   font-size: 1.4rem;

@@ -11,6 +11,7 @@
     <header class="app-header">
       <div class="header-brand">Angá</div>
       <div class="header-subtitle">AVALIACAO FISICA</div>
+      <button type="button" class="btn-nova-avaliacao" onclick="limparRascunho()">+ Nova avaliação</button>
     </header>
 
     <div class="progress-row">
@@ -26,13 +27,6 @@
     </div>
 
     <div class="card">
-      <div class="api-key-row" id="apiKeyRow" style="display:none">
-        <div class="field-group">
-          <label>Chave de API da Anthropic</label>
-          <input type="password" id="apiKey" placeholder="sk-ant-..." />
-        </div>
-      </div>
-
       <!-- SEÇÃO 1: ANAMNESE -->
       <section class="form-section active" id="section1">
         <h2>Anamnese</h2>
@@ -48,14 +42,18 @@
             <input type="date" id="dataNascimento" />
           </div>
         </div>
+        <div class="field-group">
+          <label>Ocupação / profissão</label>
+          <input type="text" id="ocupacao" placeholder="Ex: Professora, Motorista..." />
+        </div>
         <div class="field-row">
-          <div class="field-group">
-            <label>Ocupação / profissão</label>
-            <input type="text" id="ocupacao" placeholder="Ex: Professora, Motorista..." />
-          </div>
           <div class="field-group">
             <label>Fisioterapeuta avaliador</label>
             <input type="text" id="fisioterapeuta" placeholder="Nome do profissional" />
+          </div>
+          <div class="field-group">
+            <label>CREFITO</label>
+            <input type="text" id="fisioterapeutaCrefito" placeholder="Ex: Crefito-3 12345-F" />
           </div>
         </div>
         <div class="field-group">
@@ -567,6 +565,15 @@
             </div>
           </div>
           <div class="test-item">
+            <span class="test-name">Piriforme</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="piriforme" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="piriforme" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="piriforme" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="piriforme" data-val="pos-de">Positivo D e E</button>
+            </div>
+          </div>
+          <div class="test-item">
             <span class="test-name">Ober – TI-IT</span>
             <div class="test-options">
               <button type="button" class="result-btn" data-test="ober" data-val="neg">Neg</button>
@@ -620,13 +627,6 @@
         <h2>Plano de Tratamento</h2>
         <p class="section-description">Gere um plano de tratamento personalizado consolidando todos os achados da avaliação. Edite livremente o texto sugerido antes de finalizar.</p>
 
-        <div class="field-group">
-          <label>Local de prática dos exercícios</label>
-          <div class="local-exercicio-btns">
-            <button type="button" class="local-btn" id="btnCasa" onclick="selecionarLocal('casa')">Exercícios em casa</button>
-            <button type="button" class="local-btn" id="btnAcademia" onclick="selecionarLocal('academia')">Exercícios na academia / estúdio (com equipamentos)</button>
-          </div>
-        </div>
 
         <div class="plano-generate-box">
           <button type="button" id="btnGerarPlano" class="btn-gerar-plano" onclick="gerarPlanoTratamento()">
