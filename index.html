@@ -71,7 +71,17 @@
           <textarea id="queixaPrincipal" rows="2" placeholder="Queixa principal do paciente..."></textarea>
         </div>
         <div class="field-group">
-          <label>HDA – História da doença atual</label>
+          <div class="label-mic-row">
+            <label for="hda">HDA – História da doença atual</label>
+            <button type="button" id="btnMicHda" class="btn-mic" title="Gravar por voz (pt-BR)" onclick="toggleHdaVoz()">
+              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+          </div>
           <textarea id="hda" rows="3" placeholder="Descreva a história da doença atual..."></textarea>
         </div>
         <div class="field-group">
@@ -435,37 +445,17 @@
         </div>
       </section>
 
-      <!-- SEÇÃO 5: TESTES DE MOBILIDADE E ESTABILIDADE -->
+      <!-- SEÇÃO 5: TESTES DE MOBILIDADE E ESTABILIDADE ARTICULAR -->
       <section class="form-section" id="section5">
-        <h2>Testes de Mobilidade e Estabilidade</h2>
+        <h2>Testes de Mobilidade e Estabilidade Articular</h2>
 
-        <h3>Ombro / Escápula – Apley</h3>
+        <!-- ── OMBRO ─────────────────────────────────────── -->
+        <h3>Ombro</h3>
         <div class="test-grid">
 
-          <!-- Apley 1 -->
+          <!-- Apley – Alcance Superior -->
           <div class="test-item test-item--column">
-            <span class="test-name">Mão no ombro</span>
-            <div class="btn-group-row">
-              <span class="group-label">Resultado</span>
-              <div class="test-options">
-                <button type="button" class="result-btn" data-test="apley1" data-val="neg">Neg</button>
-                <button type="button" class="result-btn" data-test="apley1" data-val="pos-d">Pos D</button>
-                <button type="button" class="result-btn" data-test="apley1" data-val="pos-e">Pos E</button>
-                <button type="button" class="result-btn" data-test="apley1" data-val="pos-de">Pos D+E</button>
-              </div>
-            </div>
-            <div class="btn-group-row">
-              <span class="group-label">Achado adicional</span>
-              <div class="test-options">
-                <button type="button" class="result-btn btn-multi" data-test="apley1-red-d" data-val="red-d">Redução ADM D</button>
-                <button type="button" class="result-btn btn-multi" data-test="apley1-red-e" data-val="red-e">Redução ADM E</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Apley 2 -->
-          <div class="test-item test-item--column">
-            <span class="test-name">Palma das costas</span>
+            <span class="test-name">Apley – Alcance Superior</span>
             <div class="btn-group-row">
               <span class="group-label">Resultado</span>
               <div class="test-options">
@@ -482,11 +472,12 @@
                 <button type="button" class="result-btn btn-multi" data-test="apley2-red-e" data-val="red-e">Redução ADM E</button>
               </div>
             </div>
+            <textarea class="obs-test" id="obs-apley2" rows="1" placeholder="Observações..."></textarea>
           </div>
 
-          <!-- Apley 3 -->
+          <!-- Apley – Alcance Inferior -->
           <div class="test-item test-item--column">
-            <span class="test-name">Dorso nas costas</span>
+            <span class="test-name">Apley – Alcance Inferior</span>
             <div class="btn-group-row">
               <span class="group-label">Resultado</span>
               <div class="test-options">
@@ -503,40 +494,62 @@
                 <button type="button" class="result-btn btn-multi" data-test="apley3-red-e" data-val="red-e">Redução ADM E</button>
               </div>
             </div>
+            <textarea class="obs-test" id="obs-apley3" rows="1" placeholder="Observações..."></textarea>
           </div>
 
-          <!-- Discinese com Tipo 1/2/3 -->
+          <!-- Discinesia Escapular – lados independentes -->
           <div class="test-item test-item--column">
-            <div class="test-item-main">
-              <span class="test-name">Discinese escapular</span>
+            <span class="test-name">Discinesia Escapular</span>
+            <div class="btn-group-row">
+              <span class="group-label">Resultado</span>
               <div class="test-options">
-                <button type="button" class="result-btn" data-test="discinese" data-val="neg">Neg</button>
-                <button type="button" class="result-btn" data-test="discinese" data-val="pos-d">Pos D</button>
-                <button type="button" class="result-btn" data-test="discinese" data-val="pos-e">Pos E</button>
-                <button type="button" class="result-btn" data-test="discinese" data-val="pos-de">Pos D+E</button>
+                <button type="button" class="result-btn btn-multi" data-test="discinese-neg" data-val="neg">Negativo</button>
+                <button type="button" class="result-btn btn-multi" data-test="discinese-d" data-val="pos-d">Positivo D</button>
+                <button type="button" class="result-btn btn-multi" data-test="discinese-e" data-val="pos-e">Positivo E</button>
               </div>
             </div>
-            <div class="apley-tipo hidden" id="discinese-tipo">
-              <span class="tipo-label">Tipo:</span>
-              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo1">Tipo 1</button>
-              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo2">Tipo 2</button>
-              <button type="button" class="result-btn" data-test="discinese-tipo" data-val="tipo3">Tipo 3</button>
+            <div class="apley-tipo hidden" id="discinese-tipo-d">
+              <span class="tipo-label">Tipo D:</span>
+              <button type="button" class="result-btn" data-test="discinese-tipo-d" data-val="tipo1">Tipo 1</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo-d" data-val="tipo2">Tipo 2</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo-d" data-val="tipo3">Tipo 3</button>
             </div>
+            <div class="apley-tipo hidden" id="discinese-tipo-e">
+              <span class="tipo-label">Tipo E:</span>
+              <button type="button" class="result-btn" data-test="discinese-tipo-e" data-val="tipo1">Tipo 1</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo-e" data-val="tipo2">Tipo 2</button>
+              <button type="button" class="result-btn" data-test="discinese-tipo-e" data-val="tipo3">Tipo 3</button>
+            </div>
+            <textarea class="obs-test" id="obs-discinese" rows="1" placeholder="Observações..."></textarea>
+          </div>
+
+          <!-- Comprimento do Grande Dorsal -->
+          <div class="test-item test-item--column">
+            <span class="test-name">Comprimento do Grande Dorsal</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="grandeDorsal" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="grandeDorsal" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="grandeDorsal" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="grandeDorsal" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <textarea class="obs-test" id="obs-grandeDorsal" rows="1" placeholder="Observações..."></textarea>
           </div>
         </div>
 
+        <!-- ── QUADRIL ────────────────────────────────────── -->
         <h3>Quadril</h3>
         <div class="test-grid">
-          <div class="test-item">
-            <span class="test-name">Thomas – Quadríceps</span>
+          <div class="test-item test-item--column">
+            <span class="test-name">Thomas – Reto Femoral</span>
             <div class="test-options">
               <button type="button" class="result-btn" data-test="thomas1" data-val="neg">Neg</button>
               <button type="button" class="result-btn" data-test="thomas1" data-val="pos-d">Pos D</button>
               <button type="button" class="result-btn" data-test="thomas1" data-val="pos-e">Pos E</button>
               <button type="button" class="result-btn" data-test="thomas1" data-val="pos-de">Pos D+E</button>
             </div>
+            <textarea class="obs-test" id="obs-thomas1" rows="1" placeholder="Observações..."></textarea>
           </div>
-          <div class="test-item">
+          <div class="test-item test-item--column">
             <span class="test-name">Thomas – Iliopsoas</span>
             <div class="test-options">
               <button type="button" class="result-btn" data-test="thomas2" data-val="neg">Neg</button>
@@ -544,36 +557,39 @@
               <button type="button" class="result-btn" data-test="thomas2" data-val="pos-e">Pos E</button>
               <button type="button" class="result-btn" data-test="thomas2" data-val="pos-de">Pos D+E</button>
             </div>
+            <textarea class="obs-test" id="obs-thomas2" rows="1" placeholder="Observações..."></textarea>
           </div>
           <div class="test-item test-item--column">
-            <span class="test-name">Patrick FABERE</span>
-            <div class="btn-group-row">
-              <span class="group-label">Resultado</span>
-              <div class="test-options">
-                <button type="button" class="result-btn" data-test="patrick" data-val="neg">Neg</button>
-                <button type="button" class="result-btn" data-test="patrick" data-val="pos-d">Positivo D</button>
-                <button type="button" class="result-btn" data-test="patrick" data-val="pos-e">Positivo E</button>
-                <button type="button" class="result-btn" data-test="patrick" data-val="pos-de">Positivo D+E</button>
-              </div>
+            <span class="test-name">Patrick/FABER – Disfunção Coxofemoral</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="patrickCoxo" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="patrickCoxo" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="patrickCoxo" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="patrickCoxo" data-val="pos-de">Positivo D e E</button>
             </div>
-            <div class="btn-group-row">
-              <span class="group-label">Achado adicional</span>
-              <div class="test-options">
-                <button type="button" class="result-btn btn-multi" data-test="patrick-red-d" data-val="red-d">Redução ADM D</button>
-                <button type="button" class="result-btn btn-multi" data-test="patrick-red-e" data-val="red-e">Redução ADM E</button>
-              </div>
-            </div>
+            <textarea class="obs-test" id="obs-patrickCoxo" rows="1" placeholder="Observações..."></textarea>
           </div>
-          <div class="test-item">
-            <span class="test-name">Piriforme</span>
+          <div class="test-item test-item--column">
+            <span class="test-name">Patrick/FABER – Disfunção Sacro-Ilíaca</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="patrickSI" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="patrickSI" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="patrickSI" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="patrickSI" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <textarea class="obs-test" id="obs-patrickSI" rows="1" placeholder="Observações..."></textarea>
+          </div>
+          <div class="test-item test-item--column">
+            <span class="test-name">Comprimento do Piriforme</span>
             <div class="test-options">
               <button type="button" class="result-btn" data-test="piriforme" data-val="neg">Negativo</button>
               <button type="button" class="result-btn" data-test="piriforme" data-val="pos-d">Positivo D</button>
               <button type="button" class="result-btn" data-test="piriforme" data-val="pos-e">Positivo E</button>
               <button type="button" class="result-btn" data-test="piriforme" data-val="pos-de">Positivo D e E</button>
             </div>
+            <textarea class="obs-test" id="obs-piriforme" rows="1" placeholder="Observações..."></textarea>
           </div>
-          <div class="test-item">
+          <div class="test-item test-item--column">
             <span class="test-name">Ober – TI-IT</span>
             <div class="test-options">
               <button type="button" class="result-btn" data-test="ober" data-val="neg">Neg</button>
@@ -581,42 +597,99 @@
               <button type="button" class="result-btn" data-test="ober" data-val="pos-e">Pos E</button>
               <button type="button" class="result-btn" data-test="ober" data-val="pos-de">Pos D+E</button>
             </div>
+            <textarea class="obs-test" id="obs-ober" rows="1" placeholder="Observações..."></textarea>
+          </div>
+          <div class="test-item test-item--column">
+            <span class="test-name">Abdução do Quadril</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="abducaoQuadril" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="abducaoQuadril" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="abducaoQuadril" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="abducaoQuadril" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <textarea class="obs-test" id="obs-abducaoQuadril" rows="1" placeholder="Observações..."></textarea>
+          </div>
+          <div class="test-item test-item--column">
+            <span class="test-name">Elevação da Perna Estendida</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="elevacaoPerna" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="elevacaoPerna" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="elevacaoPerna" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="elevacaoPerna" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <div class="btn-group-row">
+              <span class="group-label">Sinal de Lasègue</span>
+              <div class="test-options">
+                <button type="button" class="result-btn btn-multi" data-test="lasegue-d" data-val="pos-d">Positivo D</button>
+                <button type="button" class="result-btn btn-multi" data-test="lasegue-e" data-val="pos-e">Positivo E</button>
+                <button type="button" class="result-btn btn-multi" data-test="lasegue-de" data-val="pos-de">Positivo D e E</button>
+                <button type="button" class="result-btn btn-multi" data-test="lasegue-cruzado" data-val="cruzado">Cruzado</button>
+              </div>
+            </div>
+            <textarea class="obs-test" id="obs-elevacaoPerna" rows="1" placeholder="Observações..."></textarea>
           </div>
         </div>
 
+        <!-- ── STEP DOWN ──────────────────────────────────── -->
         <h3>Step Down – Avaliação Funcional</h3>
         <div class="test-grid">
-          <div class="test-item">
-            <span class="test-name">Quadril</span>
+          <div class="test-item test-item--column">
+            <span class="test-name">Controle de Tronco</span>
             <div class="test-options">
-              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="neg">Neg</button>
-              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-d">Pos D</button>
-              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-e">Pos E</button>
-              <button type="button" class="result-btn" data-test="stepDownQuadril" data-val="pos-de">Pos D+E</button>
+              <button type="button" class="result-btn" data-test="stepDownTronco" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="stepDownTronco" data-val="pos">Positivo</button>
             </div>
+            <textarea class="obs-test" id="obs-stepDownTronco" rows="1" placeholder="Observações..."></textarea>
           </div>
-          <div class="test-item">
-            <span class="test-name">Joelho</span>
+          <div class="test-item test-item--column">
+            <span class="test-name">Sinal de Trendelenburg</span>
             <div class="test-options">
-              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="neg">Neg</button>
-              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-d">Pos D</button>
-              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-e">Pos E</button>
-              <button type="button" class="result-btn" data-test="stepDownJoelho" data-val="pos-de">Pos D+E</button>
+              <button type="button" class="result-btn" data-test="stepDownTrendelenburg" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="stepDownTrendelenburg" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="stepDownTrendelenburg" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="stepDownTrendelenburg" data-val="pos-de">Positivo D e E</button>
             </div>
+            <textarea class="obs-test" id="obs-stepDownTrendelenburg" rows="1" placeholder="Observações..."></textarea>
           </div>
-          <div class="test-item">
-            <span class="test-name">Tornozelo</span>
+          <div class="test-item test-item--column">
+            <span class="test-name">Valgo Dinâmico</span>
             <div class="test-options">
-              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="neg">Neg</button>
-              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-d">Pos D</button>
-              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-e">Pos E</button>
-              <button type="button" class="result-btn" data-test="stepDownTornozelo" data-val="pos-de">Pos D+E</button>
+              <button type="button" class="result-btn" data-test="stepDownValgo" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="stepDownValgo" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="stepDownValgo" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="stepDownValgo" data-val="pos-de">Positivo D e E</button>
             </div>
+            <textarea class="obs-test" id="obs-stepDownValgo" rows="1" placeholder="Observações..."></textarea>
+          </div>
+          <div class="test-item test-item--column">
+            <span class="test-name">Pronação do Tornozelo</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="stepDownPronacao" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="stepDownPronacao" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="stepDownPronacao" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="stepDownPronacao" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <textarea class="obs-test" id="obs-stepDownPronacao" rows="1" placeholder="Observações..."></textarea>
+          </div>
+        </div>
+
+        <!-- ── TORNOZELO ──────────────────────────────────── -->
+        <h3>Tornozelo</h3>
+        <div class="test-grid">
+          <div class="test-item test-item--column">
+            <span class="test-name">Lunge</span>
+            <div class="test-options">
+              <button type="button" class="result-btn" data-test="lunge" data-val="neg">Negativo</button>
+              <button type="button" class="result-btn" data-test="lunge" data-val="pos-d">Positivo D</button>
+              <button type="button" class="result-btn" data-test="lunge" data-val="pos-e">Positivo E</button>
+              <button type="button" class="result-btn" data-test="lunge" data-val="pos-de">Positivo D e E</button>
+            </div>
+            <textarea class="obs-test" id="obs-lunge" rows="1" placeholder="Observações..."></textarea>
           </div>
         </div>
 
         <div class="field-group" style="margin-top:1.5rem">
-          <label>Observações dos testes</label>
+          <label>Observações gerais dos testes</label>
           <textarea id="obsTestes" rows="3" placeholder="Observações clínicas relevantes..."></textarea>
         </div>
 

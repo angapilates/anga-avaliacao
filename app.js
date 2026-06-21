@@ -139,8 +139,6 @@ document.addEventListener('click', e => {
 
 // ── Result buttons ────────────────────────────────────────────
 // Tests that reveal a Tipo 1/2/3 sub-row when result is positive
-const TESTS_WITH_TIPO = ['discinese'];
-
 document.addEventListener('click', e => {
   const btn = e.target.closest('.result-btn');
   if (!btn) return;
@@ -154,6 +152,34 @@ document.addEventListener('click', e => {
     } else {
       delete testResults[test];
     }
+    // Discinesia: lógica de exclusão mútua entre Negativo e Positivo D/E
+    if (test === 'discinese-neg') {
+      if (btn.classList.contains('active')) {
+        // Neg ativado: limpar D e E e seus tipos
+        ['d', 'e'].forEach(lado => {
+          document.querySelector(`.result-btn[data-test="discinese-${lado}"]`)?.classList.remove('active');
+          delete testResults[`discinese-${lado}`];
+          document.getElementById(`discinese-tipo-${lado}`)?.classList.add('hidden');
+          document.querySelectorAll(`.result-btn[data-test="discinese-tipo-${lado}"]`).forEach(b => b.classList.remove('active'));
+          delete testResults[`discinese-tipo-${lado}`];
+        });
+      }
+    } else if (test === 'discinese-d' || test === 'discinese-e') {
+      if (btn.classList.contains('active')) {
+        // Positivo ativado: limpar Negativo
+        document.querySelector('.result-btn[data-test="discinese-neg"]')?.classList.remove('active');
+        delete testResults['discinese-neg'];
+      }
+      const lado = test.split('-')[1];
+      const tipoEl = document.getElementById(`discinese-tipo-${lado}`);
+      if (tipoEl) {
+        tipoEl.classList.toggle('hidden', !btn.classList.contains('active'));
+        if (!btn.classList.contains('active')) {
+          document.querySelectorAll(`.result-btn[data-test="discinese-tipo-${lado}"]`).forEach(b => b.classList.remove('active'));
+          delete testResults[`discinese-tipo-${lado}`];
+        }
+      }
+    }
     return;
   }
 
@@ -161,19 +187,6 @@ document.addEventListener('click', e => {
   document.querySelectorAll(`.result-btn[data-test="${test}"]`).forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   testResults[test] = btn.dataset.val;
-
-  // Mostrar/esconder sub-linha Tipo para testes que a utilizam
-  if (TESTS_WITH_TIPO.includes(test)) {
-    const tipoEl = document.getElementById(`${test}-tipo`);
-    if (tipoEl) {
-      const isPositive = btn.dataset.val !== 'neg';
-      tipoEl.classList.toggle('hidden', !isPositive);
-      if (!isPositive) {
-        document.querySelectorAll(`.result-btn[data-test="${test}-tipo"]`).forEach(b => b.classList.remove('active'));
-        delete testResults[`${test}-tipo`];
-      }
-    }
-  }
 });
 
 // ── Photo handling ────────────────────────────────────────────
@@ -423,10 +436,55 @@ function coletarDadosAvaliacao() {
   add('Transverso do abdômen', v('transverso'));
 
   lines.push('');
-  lines.push('=== TESTES DE MOBILIDADE E ESTABILIDADE ===');
-  const entries = Object.entries(testResults);
-  if (entries.length) entries.forEach(([test, val]) => add(test, val));
-  add('Observações dos testes', v('obsTestes'));
+  lines.push('=== TESTES DE MOBILIDADE E ESTABILIDADE ARTICULAR ===');
+  const _testKeys = [
+    ['apley2','Apley – Alcance Superior','obs-apley2',['apley2-red-d','apley2-red-e']],
+    ['apley3','Apley – Alcance Inferior','obs-apley3',['apley3-red-d','apley3-red-e']],
+    ['grandeDorsal','Grande Dorsal','obs-grandeDorsal',[]],
+    ['thomas1','Thomas – Reto Femoral','obs-thomas1',[]],
+    ['thomas2','Thomas – Iliopsoas','obs-thomas2',[]],
+    ['patrickCoxo','Patrick/FABER – Disfunção Coxofemoral','obs-patrickCoxo',[]],
+    ['patrickSI','Patrick/FABER – Disfunção Sacro-Ilíaca','obs-patrickSI',[]],
+    ['piriforme','Comprimento do Piriforme','obs-piriforme',[]],
+    ['ober','Ober – TI-IT','obs-ober',[]],
+    ['abducaoQuadril','Abdução do Quadril','obs-abducaoQuadril',[]],
+    ['elevacaoPerna','Elevação da Perna Estendida','obs-elevacaoPerna',[]],
+    ['stepDownTronco','Step Down – Controle de Tronco','obs-stepDownTronco',[]],
+    ['stepDownTrendelenburg','Step Down – Sinal de Trendelenburg','obs-stepDownTrendelenburg',[]],
+    ['stepDownValgo','Step Down – Valgo Dinâmico','obs-stepDownValgo',[]],
+    ['stepDownPronacao','Step Down – Pronação do Tornozelo','obs-stepDownPronacao',[]],
+    ['lunge','Lunge (Tornozelo)','obs-lunge',[]],
+  ];
+  _testKeys.forEach(([key, label, obsId, achados]) => {
+    if (!testResults[key]) return;
+    let val = testResults[key];
+    const extra = achados.filter(a => testResults[a]).map(a => testResults[a]);
+    if (extra.length) val += ' + ' + extra.join(' + ');
+    add(label, val);
+    const obs = v(obsId);
+    if (obs) add(`  Observação`, obs);
+  });
+  // Discinesia (lados independentes)
+  const discNeg = testResults['discinese-neg'];
+  const discD = testResults['discinese-d'], discE = testResults['discinese-e'];
+  if (discNeg || discD || discE) {
+    if (discNeg) {
+      add('Discinesia Escapular', 'Negativo');
+    } else {
+      const parts = [];
+      if (discD) parts.push('Positivo D' + (testResults['discinese-tipo-d'] ? ` (${testResults['discinese-tipo-d']})` : ''));
+      if (discE) parts.push('Positivo E' + (testResults['discinese-tipo-e'] ? ` (${testResults['discinese-tipo-e']})` : ''));
+      add('Discinesia Escapular', parts.join(' + '));
+    }
+    const obsDisc = v('obs-discinese');
+    if (obsDisc) add('  Observação', obsDisc);
+  }
+  // Lasègue (complementa Elevação da Perna Estendida)
+  const _lasegueKeys = [['lasegue-d','Positivo D'],['lasegue-e','Positivo E'],['lasegue-de','Positivo D e E'],['lasegue-cruzado','Cruzado']];
+  const _lasParts = _lasegueKeys.filter(([k]) => testResults[k]).map(([,label]) => label);
+  if (_lasParts.length) add('  Sinal de Lasègue', _lasParts.join(' + '));
+
+  add('Observações gerais dos testes', v('obsTestes'));
 
   return lines.join('\n');
 }
@@ -850,27 +908,45 @@ async function exportarPDF() {
     function addBadgeRow(pairs) {
       const colW = (CW - 4) / 2;
       const hPad = 2.5, vPad = 2.5, pillPad = 2, pillH = 6;
-      const cardH = vPad + 4.5 + pillH + vPad;
+      const baseH = vPad + 4.5 + pillH + vPad;
+      const obsLH = 3.6, obsSz = 7;
+
       for (let i = 0; i < pairs.length; i += 2) {
-        ensureY(cardH + 2);
+        // Calcula altura máxima da linha considerando obs
+        pdf.setFontSize(obsSz); pdf.setFont('helvetica', 'normal');
+        let maxH = baseH;
+        for (let col = 0; col < 2 && i + col < pairs.length; col++) {
+          const { obs } = pairs[i + col];
+          if (obs) {
+            const lines = pdf.splitTextToSize(obs, colW - hPad * 2);
+            maxH = Math.max(maxH, baseH + lines.length * obsLH + 2);
+          }
+        }
+        ensureY(maxH + 2);
         const rowY = cy;
         for (let col = 0; col < 2 && i + col < pairs.length; col++) {
-          const { label, value: str } = pairs[i + col];
+          const { label, value: str, obs } = pairs[i + col];
           const colX = CX + col * (colW + 4);
           pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
           const pillW = Math.min(pdf.getTextWidth(str) + pillPad * 2, colW - hPad * 2);
           fc(255, 255, 255); dc(230, 230, 227); pdf.setLineWidth(0.5);
-          pdf.roundedRect(colX, rowY, colW, cardH, 4, 4, 'FD');
+          pdf.roundedRect(colX, rowY, colW, maxH, 4, 4, 'FD');
           pdf.setFontSize(6.5); pdf.setFont('helvetica', 'bold'); tc(194, 86, 9);
           pdf.text(label.toUpperCase(), colX + hPad, rowY + vPad + 3.5);
           fc(240, 240, 237); dc(200, 195, 190); pdf.setLineWidth(0.15);
           pdf.roundedRect(colX + hPad, rowY + vPad + 4.5, pillW, pillH, 2, 2, 'FD');
           pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); tc(26, 29, 35);
           pdf.text(str, colX + hPad + pillPad, rowY + vPad + 4.5 + pillH * 0.65);
+          if (obs) {
+            pdf.setFontSize(obsSz); pdf.setFont('helvetica', 'italic'); tc(90, 90, 90);
+            const obsLines = pdf.splitTextToSize(obs, colW - hPad * 2);
+            let oy = rowY + baseH + 0.5;
+            obsLines.forEach(ol => { pdf.text(ol, colX + hPad, oy); oy += obsLH; });
+          }
         }
-        cy = rowY + cardH + 2;
+        cy = rowY + maxH + 2;
       }
-      dc(0, 0, 0); pdf.setLineWidth(0.3);
+      dc(0, 0, 0); pdf.setLineWidth(0.3); tc(26, 26, 26);
     }
 
     // ── Renderer do Plano de Tratamento (linha por linha) ────────
@@ -1193,28 +1269,98 @@ async function exportarPDF() {
     // ══════════════════════════════════════════════════════════════
     // SEÇÃO 5 – MOBILIDADE
     // ══════════════════════════════════════════════════════════════
-    newPage(); addH2('Testes de Mobilidade e Estabilidade');
+    newPage(); addH2('Testes de Mobilidade e Estabilidade Articular');
 
-    const testDefs = [
-      { group: 'Ombro / Escápula – Apley', items: ['apley1','apley2','apley3','discinese'] },
-      { group: 'Quadril',                  items: ['thomas1','thomas2','patrick','piriforme','ober'] },
-      { group: 'Step Down',                items: ['stepDownQuadril','stepDownJoelho','stepDownTornozelo'] },
-    ];
-    for (const { group, items } of testDefs) {
-      const groupBadges = [];
-      for (const testKey of items) {
-        const activeBtns = [...document.querySelectorAll(`.result-btn[data-test="${testKey}"].active`)];
-        if (!activeBtns.length) continue;
-        const label = document.querySelector(`.result-btn[data-test="${testKey}"]`)
-          ?.closest('.test-item')?.querySelector('.test-name')?.textContent?.trim() || testKey;
-        groupBadges.push({ label, value: activeBtns.map(b => b.textContent.trim()).join(' + ') });
+    const _getTestVal = (key, achados = []) => {
+      const btns = [...document.querySelectorAll(`.result-btn[data-test="${key}"].active`)];
+      if (!btns.length) return '';
+      let v = btns.map(b => b.textContent.trim()).join(' + ');
+      const ex = achados.filter(a => document.querySelector(`.result-btn[data-test="${a}"].active`))
+        .map(a => document.querySelector(`.result-btn[data-test="${a}"].active`).textContent.trim());
+      if (ex.length) v += ' · ' + ex.join(' · ');
+      return v;
+    };
+    const _getTestValLasegue = (key, lasegueKeys) => {
+      const btns = [...document.querySelectorAll(`.result-btn[data-test="${key}"].active`)];
+      if (!btns.length) return '';
+      let v = btns.map(b => b.textContent.trim()).join(' + ');
+      const lParts = lasegueKeys
+        .filter(k => document.querySelector(`.result-btn[data-test="${k}"].active`))
+        .map(k => document.querySelector(`.result-btn[data-test="${k}"].active`).textContent.trim());
+      if (lParts.length) v += ' | Lasègue: ' + lParts.join(' + ');
+      return v;
+    };
+    const _getDiscineseVal = () => {
+      if (document.querySelector('.result-btn[data-test="discinese-neg"].active')) return 'Negativo';
+      const parts = [];
+      if (document.querySelector('.result-btn[data-test="discinese-d"].active')) {
+        const tipo = document.querySelector('.result-btn[data-test="discinese-tipo-d"].active')?.textContent.trim();
+        parts.push('Positivo D' + (tipo ? ` (${tipo})` : ''));
       }
-      if (!groupBadges.length) continue;
+      if (document.querySelector('.result-btn[data-test="discinese-e"].active')) {
+        const tipo = document.querySelector('.result-btn[data-test="discinese-tipo-e"].active')?.textContent.trim();
+        parts.push('Positivo E' + (tipo ? ` (${tipo})` : ''));
+      }
+      return parts.join(' + ');
+    };
+    const _obs = id => (document.getElementById(id)?.value?.trim() || '');
+
+    const testGroups = [
+      {
+        group: 'Ombro',
+        tests: [
+          { key: 'apley2',       label: 'Apley – Alcance Superior',   achados: ['apley2-red-d','apley2-red-e'], obsId: 'obs-apley2' },
+          { key: 'apley3',       label: 'Apley – Alcance Inferior',    achados: ['apley3-red-d','apley3-red-e'], obsId: 'obs-apley3' },
+          { key: null,           label: 'Discinesia Escapular',        special: 'discinese',                    obsId: 'obs-discinese' },
+          { key: 'grandeDorsal', label: 'Grande Dorsal',               achados: [],                             obsId: 'obs-grandeDorsal' },
+        ],
+      },
+      {
+        group: 'Quadril',
+        tests: [
+          { key: 'thomas1',      label: 'Thomas – Reto Femoral',                   achados: [], obsId: 'obs-thomas1' },
+          { key: 'thomas2',      label: 'Thomas – Iliopsoas',                      achados: [], obsId: 'obs-thomas2' },
+          { key: 'patrickCoxo',  label: 'Patrick/FABER – Disfunção Coxofemoral',  achados: [], obsId: 'obs-patrickCoxo' },
+          { key: 'patrickSI',    label: 'Patrick/FABER – Disfunção Sacro-Ilíaca', achados: [], obsId: 'obs-patrickSI' },
+          { key: 'piriforme',    label: 'Comprimento do Piriforme',                achados: [], obsId: 'obs-piriforme' },
+          { key: 'ober',         label: 'Ober – TI-IT',                           achados: [], obsId: 'obs-ober' },
+          { key: 'abducaoQuadril',  label: 'Abdução do Quadril',                   achados: [], obsId: 'obs-abducaoQuadril' },
+          { key: 'elevacaoPerna',   label: 'Elevação da Perna Estendida',          achados: [], obsId: 'obs-elevacaoPerna',
+            lasegueKeys: ['lasegue-d','lasegue-e','lasegue-de','lasegue-cruzado'] },
+        ],
+      },
+      {
+        group: 'Step Down',
+        tests: [
+          { key: 'stepDownTronco',        label: 'Controle de Tronco',       achados: [], obsId: 'obs-stepDownTronco' },
+          { key: 'stepDownTrendelenburg', label: 'Sinal de Trendelenburg',   achados: [], obsId: 'obs-stepDownTrendelenburg' },
+          { key: 'stepDownValgo',         label: 'Valgo Dinâmico',           achados: [], obsId: 'obs-stepDownValgo' },
+          { key: 'stepDownPronacao',      label: 'Pronação do Tornozelo',    achados: [], obsId: 'obs-stepDownPronacao' },
+        ],
+      },
+      {
+        group: 'Tornozelo',
+        tests: [
+          { key: 'lunge', label: 'Lunge', achados: [], obsId: 'obs-lunge' },
+        ],
+      },
+    ];
+
+    for (const { group, tests } of testGroups) {
+      const badges = [];
+      for (const t of tests) {
+        const v = t.special === 'discinese' ? _getDiscineseVal()
+          : t.lasegueKeys ? _getTestValLasegue(t.key, t.lasegueKeys)
+          : _getTestVal(t.key, t.achados);
+        if (!v) continue;
+        badges.push({ label: t.label, value: v, obs: _obs(t.obsId) });
+      }
+      if (!badges.length) continue;
       addH3(group);
-      addBadgeRow(groupBadges);
+      addBadgeRow(badges);
       addGap(1);
     }
-    addField('Observações dos testes', val('obsTestes'));
+    addField('Observações gerais dos testes', val('obsTestes'));
 
     // ══════════════════════════════════════════════════════════════
     // SEÇÃO 6 – PLANO DE TRATAMENTO
@@ -1258,6 +1404,90 @@ async function exportarPDF() {
   }
 }
 
+// ── Transcrição de voz (HDA) ──────────────────────────────────
+let _hdaRec = null, _hdaWant = false;
+
+function toggleHdaVoz() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Reconhecimento de voz não suportado. Use Chrome ou Edge.'); return; }
+  if (location.protocol === 'file:') { showToast('Voz requer HTTP. Abra pelo Live Server ou use o deploy do Netlify.'); return; }
+
+  const btn = document.getElementById('btnMicHda');
+
+  if (_hdaWant) {
+    _hdaWant = false;
+    _hdaRec?.abort();
+    btn.classList.remove('active');
+    return;
+  }
+
+  const ta     = document.getElementById('hda');
+  const prefix = ta.value.trimEnd();
+  let acumulado = '';
+
+  _hdaWant = true;
+  btn.classList.add('active');
+
+  function rodada() {
+    if (!_hdaWant) return;
+
+    const rec = new SR();       // nova instância a cada rodada — obrigatório no Chrome
+    _hdaRec = rec;
+    rec.lang            = 'pt-BR';
+    rec.continuous      = false; // reiniciamos manualmente
+    rec.interimResults  = true;
+    rec.maxAlternatives = 1;
+
+    rec.onaudiostart = () => console.log('[voz] áudio capturado');
+    rec.onspeechstart = () => console.log('[voz] fala detectada');
+    rec.onspeechend   = () => console.log('[voz] fala encerrada');
+
+    rec.onresult = e => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) acumulado += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      ta.value = (prefix ? prefix + ' ' : '') + acumulado + interim;
+      ta.dispatchEvent(new Event('input'));
+    };
+
+    rec.onend = () => {
+      console.log('[voz] onend, _hdaWant=', _hdaWant);
+      if (_hdaWant) { setTimeout(rodada, 150); return; }
+      btn.classList.remove('active');
+      ta.value = ((prefix ? prefix + ' ' : '') + acumulado).trim();
+      ta.dispatchEvent(new Event('input'));
+    };
+
+    rec.onerror = e => {
+      console.log('[voz] onerror:', e.error);
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      _hdaWant = false;
+      btn.classList.remove('active');
+      const msgs = {
+        'not-allowed':         'Permissão de microfone negada. Permita nas configurações do Chrome.',
+        'network':             'Erro de rede ao acessar o serviço de voz do Google.',
+        'service-not-allowed': 'Serviço de voz bloqueado pelo navegador.',
+        'audio-capture':       'Microfone não encontrado ou inacessível.',
+      };
+      showToast(msgs[e.error] || `Erro de voz: ${e.error}`);
+    };
+
+    try {
+      rec.start();
+      console.log('[voz] start() chamado');
+    } catch (err) {
+      console.error('[voz] erro no start():', err);
+      showToast('Erro ao iniciar: ' + err.message);
+      _hdaWant = false;
+      btn.classList.remove('active');
+    }
+  }
+
+  rodada();
+}
+
 // ── Toast ─────────────────────────────────────────────────────
 function showToast(msg) {
   const toast = document.getElementById('toast');
@@ -1279,6 +1509,10 @@ const _FIELD_IDS = [
   'obsTestes',
   'linkVedius',
   'footerFisio','footerCrefito','footerData','footerLocalizacao',
+  'obs-apley2','obs-apley3','obs-discinese','obs-grandeDorsal',
+  'obs-thomas1','obs-thomas2','obs-patrickCoxo','obs-patrickSI','obs-piriforme','obs-ober','obs-abducaoQuadril','obs-elevacaoPerna',
+  'obs-stepDownTronco','obs-stepDownTrendelenburg','obs-stepDownValgo','obs-stepDownPronacao',
+  'obs-lunge',
 ];
 
 const _PHOTO_KEYS = ['Anterior','LateralD','LateralE','Posterior','Flexao','Extensao','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE'];
@@ -1356,10 +1590,9 @@ function restaurarRascunho() {
       testResults[test] = val;
       document.querySelector(`.result-btn[data-test="${test}"][data-val="${val}"]`)?.classList.add('active');
     });
-    TESTS_WITH_TIPO.forEach(test => {
-      if (testResults[test] && testResults[test] !== 'neg')
-        document.getElementById(`${test}-tipo`)?.classList.remove('hidden');
-    });
+    // Restaura visibilidade das linhas de Tipo da Discinesia
+    if (testResults['discinese-d']) document.getElementById('discinese-tipo-d')?.classList.remove('hidden');
+    if (testResults['discinese-e']) document.getElementById('discinese-tipo-e')?.classList.remove('hidden');
   }
 
   if (d.bodyMarkers?.length && svgOverlay) {
