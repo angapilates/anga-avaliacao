@@ -1404,6 +1404,56 @@ async function exportarPDF() {
   }
 }
 
+// ── Resumo IA (HDA) ───────────────────────────────────────────
+function _atualizarBtnResumir() {
+  const btn = document.getElementById('btnResumirHda');
+  if (btn) btn.style.display = document.getElementById('hda')?.value.trim() ? '' : 'none';
+}
+
+document.getElementById('hda').addEventListener('input', _atualizarBtnResumir);
+
+async function resumirHda() {
+  const ta = document.getElementById('hda');
+  const texto = ta.value.trim();
+  if (!texto) return;
+
+  const btn = document.getElementById('btnResumirHda');
+  btn.disabled = true;
+  btn.textContent = 'Resumindo…';
+
+  try {
+    const resp = await fetch('/.netlify/functions/ia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: 'Você é fisioterapeuta. Resuma o seguinte relato do paciente de forma clara e objetiva, mantendo apenas as informações clinicamente relevantes, em português. Sem introduções. Direto ao ponto.',
+        messages: [{ role: 'user', content: texto }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const resumo = data.content?.[0]?.text || '';
+    if (!resumo) throw new Error('Sem resposta da IA');
+
+    if (confirm('Substituir o texto atual pelo resumo?')) {
+      ta.value = resumo;
+      ta.dispatchEvent(new Event('input'));
+    }
+  } catch (err) {
+    showToast('Erro ao resumir: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Resumir';
+  }
+}
+
 // ── Transcrição de voz (HDA) ──────────────────────────────────
 let _hdaRec = null, _hdaWant = false;
 
@@ -1661,4 +1711,5 @@ const _mm = String(_today.getMonth() + 1).padStart(2, '0');
 const _dd = String(_today.getDate()).padStart(2, '0');
 document.getElementById('footerData').value = `${_yyyy}-${_mm}-${_dd}`;
 restaurarRascunho();
+_atualizarBtnResumir();
 
