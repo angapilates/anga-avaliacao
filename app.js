@@ -196,13 +196,33 @@ function isHeicFile(file) {
     file.type === 'image/heif';
 }
 
+function resizeImageToBase64(dataUrl, maxDim, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const out = canvas.toDataURL('image/jpeg', quality);
+      resolve({ dataUrl: out, base64: out.split(',')[1], mimeType: 'image/jpeg' });
+    };
+    img.src = dataUrl;
+  });
+}
+
 function storePhoto(key, file) {
   const reader = new FileReader();
-  reader.onload = ev => {
-    photoData[key] = { dataUrl: ev.target.result, base64: ev.target.result.split(',')[1], mimeType: file.type };
+  reader.onload = async ev => {
+    const { dataUrl, base64, mimeType } = await resizeImageToBase64(ev.target.result, 1024, 0.75);
+    photoData[key] = { dataUrl, base64, mimeType };
     const preview = document.getElementById(`preview${key}`);
     const placeholder = document.getElementById(`placeholder${key}`);
-    if (preview) { preview.src = ev.target.result; preview.classList.add('visible'); }
+    if (preview) { preview.src = dataUrl; preview.classList.add('visible'); }
     if (placeholder) placeholder.classList.add('hidden');
   };
   reader.readAsDataURL(file);
