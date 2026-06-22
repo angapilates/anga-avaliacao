@@ -217,9 +217,9 @@ function resizeImageToBase64(dataUrl, maxDim, quality) {
 
 function storePhoto(key, file) {
   const reader = new FileReader();
-  reader.onload = async ev => {
-    const { dataUrl, base64, mimeType } = await resizeImageToBase64(ev.target.result, 800, 0.6);
-    photoData[key] = { dataUrl, base64, mimeType };
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    photoData[key] = { dataUrl, base64: dataUrl.split(',')[1], mimeType: file.type };
     const preview = document.getElementById(`preview${key}`);
     const placeholder = document.getElementById(`placeholder${key}`);
     if (preview) { preview.src = dataUrl; preview.classList.add('visible'); }
@@ -358,7 +358,7 @@ async function analisarFoto(key) {
   resultEl.className = 'ai-result visible loading';
   resultEl.textContent = 'Analisando com IA...';
 
-  const { base64, mimeType } = photoData[key];
+  const { base64, mimeType } = await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
 
   try {
     const resp = await fetch('/.netlify/functions/ia', {
