@@ -218,7 +218,7 @@ function resizeImageToBase64(dataUrl, maxDim, quality) {
 function storePhoto(key, file) {
   const reader = new FileReader();
   reader.onload = async ev => {
-    const { dataUrl, base64, mimeType } = await resizeImageToBase64(ev.target.result, 1024, 0.75);
+    const { dataUrl, base64, mimeType } = await resizeImageToBase64(ev.target.result, 800, 0.6);
     photoData[key] = { dataUrl, base64, mimeType };
     const preview = document.getElementById(`preview${key}`);
     const placeholder = document.getElementById(`placeholder${key}`);
@@ -365,7 +365,7 @@ async function analisarFoto(key) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
         messages: [{
           role: 'user',
