@@ -1427,7 +1427,7 @@ async function exportarPDF() {
 // ── Resumo IA (HDA) ───────────────────────────────────────────
 function _atualizarBtnResumir() {
   const btn = document.getElementById('btnResumirHda');
-  if (btn) btn.style.display = document.getElementById('hda')?.value.trim() ? '' : 'none';
+  if (btn) btn.style.display = document.getElementById('hda')?.value.trim() ? 'inline-block' : 'none';
 }
 
 document.getElementById('hda').addEventListener('input', _atualizarBtnResumir);
