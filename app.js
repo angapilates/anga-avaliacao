@@ -196,6 +196,68 @@ function isHeicFile(file) {
     file.type === 'image/heif';
 }
 
+function getExifOrientation(dataUrl, callback) {
+  try {
+    const base64 = dataUrl.split(',')[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const view = new DataView(bytes.buffer);
+    if (view.getUint16(0) !== 0xFFD8) { callback(1); return; }
+    let offset = 2;
+    while (offset < view.byteLength - 2) {
+      const marker = view.getUint16(offset); offset += 2;
+      if (marker === 0xFFE1) {
+        const exifOffset = offset + 2;
+        if (view.getUint32(exifOffset) === 0x45786966) {
+          const little = view.getUint16(exifOffset + 6) === 0x4949;
+          const ifdOffset = view.getUint32(exifOffset + 10, little) + exifOffset + 6;
+          const ifdCount = view.getUint16(ifdOffset, little);
+          for (let i = 0; i < ifdCount; i++) {
+            const tagOffset = ifdOffset + 2 + i * 12;
+            if (view.getUint16(tagOffset, little) === 0x0112) {
+              callback(view.getUint16(tagOffset + 8, little)); return;
+            }
+          }
+        }
+        break;
+      }
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      offset += view.getUint16(offset);
+    }
+  } catch (e) {}
+  callback(1);
+}
+
+function fixImageOrientation(dataUrl) {
+  return new Promise(resolve => {
+    getExifOrientation(dataUrl, orientation => {
+      if (orientation <= 1) { resolve(dataUrl); return; }
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const swapped = orientation >= 5;
+        canvas.width  = swapped ? h : w;
+        canvas.height = swapped ? w : h;
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0,  1, w, 0); break;
+          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
+          case 4: ctx.transform( 1, 0, 0, -1, 0, h); break;
+          case 5: ctx.transform( 0, 1, 1,  0, 0, 0); break;
+          case 6: ctx.transform( 0, 1,-1,  0, h, 0); break;
+          case 7: ctx.transform( 0,-1,-1,  0, h, w); break;
+          case 8: ctx.transform( 0,-1, 1,  0, 0, w); break;
+        }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.src = dataUrl;
+    });
+  });
+}
+
 function resizeImageToBase64(dataUrl, maxDim, quality) {
   return new Promise(resolve => {
     const img = new Image();
@@ -217,12 +279,12 @@ function resizeImageToBase64(dataUrl, maxDim, quality) {
 
 function storePhoto(key, file) {
   const reader = new FileReader();
-  reader.onload = ev => {
-    const dataUrl = ev.target.result;
-    photoData[key] = { dataUrl, base64: dataUrl.split(',')[1], mimeType: file.type };
+  reader.onload = async ev => {
+    const corrected = await fixImageOrientation(ev.target.result);
+    photoData[key] = { dataUrl: corrected, base64: corrected.split(',')[1], mimeType: 'image/jpeg' };
     const preview = document.getElementById(`preview${key}`);
     const placeholder = document.getElementById(`placeholder${key}`);
-    if (preview) { preview.src = dataUrl; preview.classList.add('visible'); }
+    if (preview) { preview.src = corrected; preview.classList.add('visible'); }
     if (placeholder) placeholder.classList.add('hidden');
   };
   reader.readAsDataURL(file);
@@ -285,6 +347,8 @@ function buildPosturalPrompt(vista, ctx) {
 
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
+<strong>Convenção de lateralidade:</strong> nas vistas anterior e posterior, o lado DIREITO do paciente aparece no lado ESQUERDO da imagem (como em um espelho). Use sempre o referencial do paciente, não do observador.
+
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
 
 DIRETRIZES:
@@ -319,6 +383,8 @@ function buildChainPrompt(movimento, ctx) {
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
+<strong>Convenção de lateralidade:</strong> nas vistas anterior e posterior, o lado DIREITO do paciente aparece no lado ESQUERDO da imagem (como em um espelho). Use sempre o referencial do paciente, não do observador.
+
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
 
 DIRETRIZES:
