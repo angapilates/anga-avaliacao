@@ -361,7 +361,7 @@ async function analisarFoto(key) {
   const { base64, mimeType } = await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
 
   try {
-    const resp = await fetch('/.netlify/functions/ia', {
+    const resp = await fetch('/api/ia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -558,7 +558,7 @@ PRIORIDADES PARA AS PRIMEIRAS SESSÕES:
 Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante estiver ausente, indique que a análise fica prejudicada. Não invente achados. Responda em português.`;
 
   try {
-    const resp = await fetch('/.netlify/functions/ia', {
+    const resp = await fetch('/api/ia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1442,7 +1442,7 @@ async function resumirHda() {
   btn.textContent = 'Resumindo…';
 
   try {
-    const resp = await fetch('/.netlify/functions/ia', {
+    const resp = await fetch('/api/ia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
