@@ -196,67 +196,22 @@ function isHeicFile(file) {
     file.type === 'image/heif';
 }
 
-function getExifOrientation(dataUrl, callback) {
+async function fixImageOrientation(dataUrl) {
   try {
-    const base64 = dataUrl.split(',')[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const view = new DataView(bytes.buffer);
-    if (view.getUint16(0) !== 0xFFD8) { callback(1); return; }
-    let offset = 2;
-    while (offset < view.byteLength - 2) {
-      const marker = view.getUint16(offset); offset += 2;
-      if (marker === 0xFFE1) {
-        const exifOffset = offset + 2;
-        if (view.getUint32(exifOffset) === 0x45786966) {
-          const little = view.getUint16(exifOffset + 6) === 0x4949;
-          const ifdOffset = view.getUint32(exifOffset + 10, little) + exifOffset + 6;
-          const ifdCount = view.getUint16(ifdOffset, little);
-          for (let i = 0; i < ifdCount; i++) {
-            const tagOffset = ifdOffset + 2 + i * 12;
-            if (view.getUint16(tagOffset, little) === 0x0112) {
-              callback(view.getUint16(tagOffset + 8, little)); return;
-            }
-          }
-        }
-        break;
-      }
-      if ((marker & 0xFF00) !== 0xFF00) break;
-      offset += view.getUint16(offset);
-    }
-  } catch (e) {}
-  callback(1);
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch (e) {
+    return dataUrl;
+  }
 }
 
-function fixImageOrientation(dataUrl) {
-  return new Promise(resolve => {
-    getExifOrientation(dataUrl, orientation => {
-      if (orientation <= 1) { resolve(dataUrl); return; }
-      const img = new Image();
-      img.onload = () => {
-        const w = img.naturalWidth, h = img.naturalHeight;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const swapped = orientation >= 5;
-        canvas.width  = swapped ? h : w;
-        canvas.height = swapped ? w : h;
-        switch (orientation) {
-          case 2: ctx.transform(-1, 0, 0,  1, w, 0); break;
-          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;
-          case 4: ctx.transform( 1, 0, 0, -1, 0, h); break;
-          case 5: ctx.transform( 0, 1, 1,  0, 0, 0); break;
-          case 6: ctx.transform( 0, 1,-1,  0, h, 0); break;
-          case 7: ctx.transform( 0,-1,-1,  0, h, w); break;
-          case 8: ctx.transform( 0,-1, 1,  0, 0, w); break;
-        }
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      img.src = dataUrl;
-    });
-  });
-}
 
 function resizeImageToBase64(dataUrl, maxDim, quality) {
   return new Promise(resolve => {
