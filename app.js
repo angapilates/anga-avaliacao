@@ -8,6 +8,59 @@ let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 const testResults = {};
 
+// ── Barra de formatação flutuante ─────────────────────────────
+(function setupFormatToolbar() {
+  const toolbar = document.createElement('div');
+  toolbar.id = 'format-toolbar';
+  toolbar.style.cssText = [
+    'position:fixed','z-index:9999','display:none',
+    'background:#1a1a1a','border-radius:6px','padding:4px 6px',
+    'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
+    'gap:4px','align-items:center'
+  ].join(';');
+
+  const makeBtn = (label, title, action) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.title = title;
+    b.style.cssText = [
+      'background:transparent','border:1px solid #555','color:#fff',
+      'border-radius:4px','padding:2px 8px','cursor:pointer',
+      'font-size:13px','line-height:1.4'
+    ].join(';');
+    b.addEventListener('mousedown', e => { e.preventDefault(); action(); });
+    return b;
+  };
+
+  toolbar.appendChild(makeBtn('N', 'Negrito', () => document.execCommand('bold')));
+  toolbar.appendChild(makeBtn('I', 'Itálico', () => document.execCommand('italic')));
+  document.body.appendChild(toolbar);
+
+  let hideTimer;
+  function positionToolbar() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { toolbar.style.display = 'none'; return; }
+    const anchor = sel.anchorNode?.parentElement;
+    if (!anchor?.closest('.ai-result')) { toolbar.style.display = 'none'; return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    toolbar.style.display = 'flex';
+    toolbar.style.top  = (rect.top + window.scrollY - 40) + 'px';
+    toolbar.style.left = (rect.left + rect.width / 2 - 40) + 'px';
+  }
+
+  document.addEventListener('mouseup',  positionToolbar);
+  document.addEventListener('keyup',    positionToolbar);
+  document.addEventListener('mousedown', e => {
+    if (!e.target.closest('#format-toolbar')) {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        if (window.getSelection()?.isCollapsed) toolbar.style.display = 'none';
+      }, 150);
+    }
+  });
+})();
+
 // ── Navigation ────────────────────────────────────────────────
 function navigate(dir) {
   const next = currentSection + dir;
