@@ -8,15 +8,14 @@ let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 const testResults = {};
 
-// ── Barra de formatação flutuante ─────────────────────────────
-(function setupFormatToolbar() {
-  const toolbar = document.createElement('div');
-  toolbar.id = 'format-toolbar';
-  toolbar.style.cssText = [
-    'position:fixed','z-index:9999','display:none',
-    'background:#1a1a1a','border-radius:6px','padding:4px 6px',
-    'box-shadow:0 2px 8px rgba(0,0,0,0.4)',
-    'gap:4px','align-items:center'
+// ── Barra de formatação nos campos de IA ─────────────────────
+function injectFormatBar(resultEl) {
+  if (resultEl.previousElementSibling?.classList.contains('format-bar')) return;
+  const bar = document.createElement('div');
+  bar.className = 'format-bar';
+  bar.style.cssText = [
+    'display:none','gap:6px','align-items:center',
+    'padding:4px 0 6px 0'
   ].join(';');
 
   const makeBtn = (label, title, action) => {
@@ -25,41 +24,27 @@ const testResults = {};
     b.textContent = label;
     b.title = title;
     b.style.cssText = [
-      'background:transparent','border:1px solid #555','color:#fff',
-      'border-radius:4px','padding:2px 8px','cursor:pointer',
-      'font-size:13px','line-height:1.4'
+      'background:#f5f5f5','border:1px solid #ccc','color:#222',
+      'border-radius:4px','padding:2px 10px','cursor:pointer',
+      'font-size:13px','line-height:1.6','font-weight:600'
     ].join(';');
     b.addEventListener('mousedown', e => { e.preventDefault(); action(); });
     return b;
   };
 
-  toolbar.appendChild(makeBtn('N', 'Negrito', () => document.execCommand('bold')));
-  toolbar.appendChild(makeBtn('I', 'Itálico', () => document.execCommand('italic')));
-  document.body.appendChild(toolbar);
+  bar.appendChild(makeBtn('N', 'Negrito (Ctrl+B)', () => document.execCommand('bold')));
+  bar.appendChild(makeBtn('I', 'Itálico (Ctrl+I)',  () => document.execCommand('italic')));
 
-  let hideTimer;
-  function positionToolbar() {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) { toolbar.style.display = 'none'; return; }
-    const anchor = sel.anchorNode?.parentElement;
-    if (!anchor?.closest('.ai-result')) { toolbar.style.display = 'none'; return; }
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    toolbar.style.display = 'flex';
-    toolbar.style.top  = (rect.top + window.scrollY - 40) + 'px';
-    toolbar.style.left = (rect.left + rect.width / 2 - 40) + 'px';
-  }
+  const hint = document.createElement('span');
+  hint.textContent = 'Selecione o texto e clique para formatar';
+  hint.style.cssText = 'font-size:11px;color:#999;margin-left:4px;';
+  bar.appendChild(hint);
 
-  document.addEventListener('mouseup',  positionToolbar);
-  document.addEventListener('keyup',    positionToolbar);
-  document.addEventListener('mousedown', e => {
-    if (!e.target.closest('#format-toolbar')) {
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => {
-        if (window.getSelection()?.isCollapsed) toolbar.style.display = 'none';
-      }, 150);
-    }
-  });
-})();
+  resultEl.parentElement.insertBefore(bar, resultEl);
+
+  resultEl.addEventListener('focus', () => { bar.style.display = 'flex'; });
+  resultEl.addEventListener('blur',  () => { setTimeout(() => { bar.style.display = 'none'; }, 200); });
+}
 
 // ── Navigation ────────────────────────────────────────────────
 function navigate(dir) {
@@ -461,6 +446,7 @@ async function analisarFoto(key) {
     resultEl.className = 'ai-result visible';
     resultEl.contentEditable = 'true';
     resultEl.innerHTML = text.replace(/\n/g, '<br>');
+    injectFormatBar(resultEl);
   } catch (err) {
     resultEl.className = 'ai-result visible';
     resultEl.style.color = '#dc2626';
@@ -651,6 +637,7 @@ Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante esti
     const planText = data.content?.[0]?.text || 'Sem resposta.';
     storedPlanoHTML = ta.innerHTML = planText.replace(/\n/g, '<br>');
     console.log('[gerarPlano] storedPlanoHTML definido, length:', storedPlanoHTML.length);
+    injectFormatBar(ta);
     wrapper.style.display = 'block';
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
@@ -1806,4 +1793,33 @@ const _dd = String(_today.getDate()).padStart(2, '0');
 document.getElementById('footerData').value = `${_yyyy}-${_mm}-${_dd}`;
 restaurarRascunho();
 _atualizarBtnResumir();
+
+// ── Ativa campos de IA como editáveis desde o início ─────────
+(function initAiFields() {
+  const allKeys = ['Anterior','LateralD','LateralE','Posterior','Flexao','Extensao','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE'];
+  const plano = document.getElementById('planoTratamento');
+  const allEls = [
+    ...allKeys.map(k => document.getElementById(`result${k}`)),
+    plano
+  ].filter(Boolean);
+
+  allEls.forEach(el => {
+    el.contentEditable = 'true';
+    if (!el.innerHTML.trim()) {
+      el.dataset.placeholder = 'true';
+      el.style.color = '#aaa';
+      el.innerHTML = 'Clique aqui para digitar manualmente ou use o botão "Analisar com IA" acima.';
+      el.classList.add('visible');
+      el.addEventListener('focus', function onFocus() {
+        if (el.dataset.placeholder === 'true') {
+          el.innerHTML = '';
+          el.style.color = '';
+          delete el.dataset.placeholder;
+        }
+        el.removeEventListener('focus', onFocus);
+      }, { once: true });
+    }
+    injectFormatBar(el);
+  });
+})();
 
