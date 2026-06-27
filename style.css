@@ -555,6 +555,12 @@ textarea { resize: vertical; }
 .ai-result.visible { display: block; }
 .ai-result.loading { color: var(--text-muted); font-style: italic; }
 .ai-result[contenteditable="true"] { cursor: text; }
+.ai-result[contenteditable="true"]:empty::before {
+  content: 'Clique aqui para digitar manualmente ou use o botão "Analisar com IA" acima.';
+  color: #aaa;
+  font-style: italic;
+  pointer-events: none;
+}
 .ai-result[contenteditable="true"]:focus {
   outline: none;
   border-color: var(--accent);

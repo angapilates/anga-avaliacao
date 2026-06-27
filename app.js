@@ -447,6 +447,7 @@ async function analisarFoto(key) {
     resultEl.contentEditable = 'true';
     resultEl.innerHTML = text.replace(/\n/g, '<br>');
     injectFormatBar(resultEl);
+    salvarRascunho();
   } catch (err) {
     resultEl.className = 'ai-result visible';
     resultEl.style.color = '#dc2626';
@@ -638,6 +639,7 @@ Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante esti
     storedPlanoHTML = ta.innerHTML = planText.replace(/\n/g, '<br>');
     console.log('[gerarPlano] storedPlanoHTML definido, length:', storedPlanoHTML.length);
     injectFormatBar(ta);
+    salvarRascunho();
     wrapper.style.display = 'block';
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
@@ -1797,29 +1799,18 @@ _atualizarBtnResumir();
 // ── Ativa campos de IA como editáveis desde o início ─────────
 (function initAiFields() {
   const allKeys = ['Anterior','LateralD','LateralE','Posterior','Flexao','Extensao','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE'];
-  const plano = document.getElementById('planoTratamento');
-  const allEls = [
-    ...allKeys.map(k => document.getElementById(`result${k}`)),
-    plano
-  ].filter(Boolean);
-
-  allEls.forEach(el => {
+  allKeys.forEach(k => {
+    const el = document.getElementById(`result${k}`);
+    if (!el) return;
     el.contentEditable = 'true';
-    if (!el.innerHTML.trim()) {
-      el.dataset.placeholder = 'true';
-      el.style.color = '#aaa';
-      el.innerHTML = 'Clique aqui para digitar manualmente ou use o botão "Analisar com IA" acima.';
-      el.classList.add('visible');
-      el.addEventListener('focus', function onFocus() {
-        if (el.dataset.placeholder === 'true') {
-          el.innerHTML = '';
-          el.style.color = '';
-          delete el.dataset.placeholder;
-        }
-        el.removeEventListener('focus', onFocus);
-      }, { once: true });
-    }
+    el.classList.add('visible');
     injectFormatBar(el);
   });
+
+  // Plano de tratamento: já tem contentEditable no HTML, só mostra o container
+  const wrapper = document.getElementById('planoResultWrapper');
+  const plano   = document.getElementById('planoTratamento');
+  if (wrapper) wrapper.style.display = 'block';
+  if (plano)   injectFormatBar(plano);
 })();
 
