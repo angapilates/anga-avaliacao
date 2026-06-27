@@ -44,10 +44,9 @@ const testResults = {};
 
   function show(rect) {
     bar.style.display = 'flex';
-    const top = rect.top < 50
-      ? rect.bottom + window.scrollY + 6
-      : rect.top  + window.scrollY - 44;
-    const left = Math.max(8, rect.left + (rect.width / 2) - 40);
+    // position:fixed usa coordenadas do viewport — sem scrollY
+    const top = rect.top < 50 ? rect.bottom + 6 : rect.top - 44;
+    const left = Math.max(8, rect.left + rect.width / 2 - 44);
     bar.style.top  = top  + 'px';
     bar.style.left = left + 'px';
   }
