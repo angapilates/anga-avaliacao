@@ -8,43 +8,66 @@ let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 const testResults = {};
 
-// ── Barra de formatação nos campos de IA ─────────────────────
-function injectFormatBar(resultEl) {
-  if (resultEl.previousElementSibling?.classList.contains('format-bar')) return;
+// ── Barra de formatação flutuante (aparece ao selecionar texto) ──
+(function setupFloatingFormatBar() {
   const bar = document.createElement('div');
-  bar.className = 'format-bar';
+  bar.id = 'fmt-bar';
   bar.style.cssText = [
-    'display:none','gap:6px','align-items:center',
-    'padding:4px 0 6px 0'
+    'position:fixed','z-index:99999','display:none','flex-direction:row',
+    'gap:4px','align-items:center','padding:5px 8px',
+    'background:#1c1c1c','border-radius:7px',
+    'box-shadow:0 3px 12px rgba(0,0,0,0.35)',
+    'pointer-events:auto'
   ].join(';');
 
-  const makeBtn = (label, title, action) => {
+  const makeBtn = (label, cmd) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = label;
-    b.title = title;
     b.style.cssText = [
-      'background:#f5f5f5','border:1px solid #ccc','color:#222',
-      'border-radius:4px','padding:2px 10px','cursor:pointer',
-      'font-size:13px','line-height:1.6','font-weight:600'
+      'background:transparent','border:1px solid #555','color:#fff',
+      'border-radius:5px','padding:3px 11px','cursor:pointer',
+      'font-size:14px','line-height:1.5',
+      label === 'N' ? 'font-weight:700' : 'font-style:italic'
     ].join(';');
-    b.addEventListener('mousedown', e => { e.preventDefault(); action(); });
+    b.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.execCommand(cmd);
+    });
     return b;
   };
 
-  bar.appendChild(makeBtn('N', 'Negrito (Ctrl+B)', () => document.execCommand('bold')));
-  bar.appendChild(makeBtn('I', 'Itálico (Ctrl+I)',  () => document.execCommand('italic')));
+  bar.appendChild(makeBtn('N', 'bold'));
+  bar.appendChild(makeBtn('I', 'italic'));
+  document.body.appendChild(bar);
 
-  const hint = document.createElement('span');
-  hint.textContent = 'Selecione o texto e clique para formatar';
-  hint.style.cssText = 'font-size:11px;color:#999;margin-left:4px;';
-  bar.appendChild(hint);
+  function show(rect) {
+    bar.style.display = 'flex';
+    const top = rect.top < 50
+      ? rect.bottom + window.scrollY + 6
+      : rect.top  + window.scrollY - 44;
+    const left = Math.max(8, rect.left + (rect.width / 2) - 40);
+    bar.style.top  = top  + 'px';
+    bar.style.left = left + 'px';
+  }
 
-  resultEl.parentElement.insertBefore(bar, resultEl);
+  function hide() { bar.style.display = 'none'; }
 
-  resultEl.addEventListener('focus', () => { bar.style.display = 'flex'; });
-  resultEl.addEventListener('blur',  () => { setTimeout(() => { bar.style.display = 'none'; }, 200); });
-}
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { hide(); return; }
+    const node = sel.anchorNode?.nodeType === 3
+      ? sel.anchorNode.parentElement
+      : sel.anchorNode;
+    if (!node?.closest('.ai-result, #planoTratamento')) { hide(); return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (rect.width === 0) { hide(); return; }
+    show(rect);
+  });
+})();
+
+function injectFormatBar(resultEl) { /* barra agora é global — nada a fazer por elemento */ }
 
 // ── Navigation ────────────────────────────────────────────────
 function navigate(dir) {
