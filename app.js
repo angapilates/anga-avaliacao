@@ -821,12 +821,10 @@ async function exportarPDF() {
       pdf.setDrawColor(220, 220, 217); pdf.setLineWidth(0.2);
       pdf.line(CX, M + HEADER_H, CX + CW, M + HEADER_H);
 
-      // Footer: logo preta marca d'água centralizada (20% opacidade)
+      // Footer: logo centralizada no rodapé
       const wLogoH = 10, wLogoW = wLogoH * (logoNW / logoNH);
       const wLogoX = CX + (CW - wLogoW) / 2, wLogoY = PH - M - 5;
-      try { pdf.setGState(new pdf.GState({opacity: 0.50})); } catch(e) {}
       try { pdf.addImage(LOGO_WATERMARK_B64, 'PNG', wLogoX, wLogoY, wLogoW, wLogoH); } catch(e) {}
-      try { pdf.setGState(new pdf.GState({opacity: 1})); } catch(e) {}
       // Número de página à direita
       pdf.setFontSize(8); pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(144, 162, 132);
@@ -953,21 +951,23 @@ async function exportarPDF() {
       const segs = [];
       const d = document.createElement('div');
       d.innerHTML = html;
-      function walk(node, bold) {
+      function walk(node, bold, italic) {
         if (node.nodeType === 3) {
-          if (node.textContent) segs.push({ t: node.textContent, bold });
+          if (node.textContent) segs.push({ t: node.textContent, bold, italic });
         } else if (node.nodeName === 'BR') {
           segs.push({ nl: true });
         } else if (['STRONG', 'B'].includes(node.nodeName)) {
-          [...node.childNodes].forEach(c => walk(c, true));
+          [...node.childNodes].forEach(c => walk(c, true, italic));
+        } else if (['EM', 'I'].includes(node.nodeName)) {
+          [...node.childNodes].forEach(c => walk(c, bold, true));
         } else if (['P','DIV','H1','H2','H3','H4','H5','LI'].includes(node.nodeName)) {
-          [...node.childNodes].forEach(c => walk(c, bold));
+          [...node.childNodes].forEach(c => walk(c, bold, italic));
           segs.push({ nl: true });
         } else {
-          [...node.childNodes].forEach(c => walk(c, bold));
+          [...node.childNodes].forEach(c => walk(c, bold, italic));
         }
       }
-      [...d.childNodes].forEach(c => walk(c, false));
+      [...d.childNodes].forEach(c => walk(c, false, false));
       return segs;
     }
 
@@ -989,7 +989,8 @@ async function exportarPDF() {
           ensureY(lh);
           continue;
         }
-        pdf.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+        const style = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+        pdf.setFont('helvetica', style);
         const words = seg.t.replace(/\s+/g, ' ').split(' ');
         for (const w of words) {
           if (!w) continue;
@@ -1032,13 +1033,14 @@ async function exportarPDF() {
       if (!hasL && !hasR) return;
       const colW = (CW - 5) / 2;
       const lX = CX, rX = CX + colW + 5;
+      const photoW = PW / 3; // foto ocupa 1/3 da largura da página (~70mm)
       const fontSize = 8, lineH = 4;
       const toPlain = html => html
         ? html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim()
         : '';
       let lPhH = 0, rPhH = 0;
-      if (lUrl) { const [nw, nh] = await getImgDims(lUrl); lPhH = colW * (nh / nw); }
-      if (rUrl) { const [nw, nh] = await getImgDims(rUrl); rPhH = colW * (nh / nw); }
+      if (lUrl) { const [nw, nh] = await getImgDims(lUrl); lPhH = photoW * (nh / nw); }
+      if (rUrl) { const [nw, nh] = await getImgDims(rUrl); rPhH = photoW * (nh / nw); }
       pdf.setFontSize(fontSize);
       const flowCol = t => {
         if (!t) return [];
@@ -1057,9 +1059,11 @@ async function exportarPDF() {
       if (hasL) { pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); tc(194, 86, 9); pdf.text(lLabel, lX, sy + 5); }
       if (hasR && rLabel) { pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); tc(194, 86, 9); pdf.text(rLabel, rX, sy + 5); }
 
-      // Fotos
-      if (lUrl) pdf.addImage(lUrl, imgFmt(lUrl), lX, sy + 10, colW, lPhH);
-      if (rUrl) pdf.addImage(rUrl, imgFmt(rUrl), rX, sy + 10, colW, rPhH);
+      // Fotos centralizadas em cada coluna (1/3 da página)
+      const lPhX = lX + (colW - photoW) / 2;
+      const rPhX = rX + (colW - photoW) / 2;
+      if (lUrl) pdf.addImage(lUrl, imgFmt(lUrl), lPhX, sy + 10, photoW, lPhH);
+      if (rUrl) pdf.addImage(rUrl, imgFmt(rUrl), rPhX, sy + 10, photoW, rPhH);
 
       // Avança cy para depois das fotos
       cy = sy + 10 + photoH + (photoH > 0 ? 4 : 0);
