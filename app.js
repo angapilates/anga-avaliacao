@@ -454,7 +454,8 @@ async function analisarFoto(key) {
     const parEl = document.getElementById(`result${parKey}`);
     const parTexto = parEl?.textContent?.trim();
     if (parTexto && !parTexto.startsWith('Analisando') && parEl.classList.contains('visible')) {
-      comparacao = `[${VIEW_LABELS[parKey]}]\n${parTexto}`;
+      const parTextoLimitado = parTexto.length > 2000 ? parTexto.slice(0, 2000) + '…' : parTexto;
+      comparacao = `[${VIEW_LABELS[parKey]}]\n${parTextoLimitado}`;
     }
   }
 

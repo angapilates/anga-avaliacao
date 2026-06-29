@@ -15,6 +15,9 @@ app.post('/api/ia', async (req, res) => {
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -23,12 +26,18 @@ app.post('/api/ia', async (req, res) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(req.body),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
-    res.status(500).json({ error: { message: 'Erro ao conectar com a IA.' } });
+    if (err.name === 'AbortError') {
+      res.status(504).json({ error: { message: 'A análise demorou demais. Tente novamente.' } });
+    } else {
+      res.status(500).json({ error: { message: 'Erro ao conectar com a IA.' } });
+    }
   }
 });
 
