@@ -1597,6 +1597,18 @@ function _atualizarBtnResumir() {
 
 document.getElementById('hda').addEventListener('input', _atualizarBtnResumir);
 
+// Limpa espaços extras ao colar texto no campo de exames (comum em cópias de PDF)
+document.getElementById('exames').addEventListener('paste', function(e) {
+  e.preventDefault();
+  const texto = (e.clipboardData || window.clipboardData).getData('text');
+  const limpo = texto
+    .split('\n')
+    .map(linha => linha.replace(/\s{2,}/g, ' ').trim())
+    .join('\n')
+    .trim();
+  document.execCommand('insertText', false, limpo);
+});
+
 async function resumirHda() {
   const ta = document.getElementById('hda');
   const texto = ta.value.trim();
