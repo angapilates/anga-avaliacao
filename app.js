@@ -494,10 +494,65 @@ async function analisarFoto(key) {
     resultEl.innerHTML = text.replace(/\n/g, '<br>');
     injectFormatBar(resultEl);
     salvarRascunho();
+
+    // Botão "Resumir análise"
+    let resumirBtn = document.getElementById(`resumirAnaliseBtn${key}`);
+    if (!resumirBtn) {
+      resumirBtn = document.createElement('button');
+      resumirBtn.type = 'button';
+      resumirBtn.id = `resumirAnaliseBtn${key}`;
+      resumirBtn.className = 'btn-resumir-analise';
+      resumirBtn.textContent = 'Resumir análise';
+      resumirBtn.onclick = () => resumirAnalise(key);
+      resultEl.parentNode.insertBefore(resumirBtn, resultEl.nextSibling);
+    }
+    resumirBtn.style.display = '';
   } catch (err) {
     resultEl.className = 'ai-result visible';
     resultEl.style.color = '#dc2626';
     resultEl.innerHTML = `Erro: ${err.message}`;
+  }
+}
+
+async function resumirAnalise(key) {
+  const resultEl = document.getElementById(`result${key}`);
+  const texto = resultEl?.innerText?.trim();
+  if (!texto) return;
+
+  const btn = document.getElementById(`resumirAnaliseBtn${key}`);
+  btn.disabled = true;
+  btn.textContent = 'Resumindo…';
+
+  try {
+    const resp = await fetch('/api/ia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: 'Você é fisioterapeuta. Resuma a análise abaixo de forma objetiva, mantendo apenas os achados clinicamente mais relevantes e as sugestões de abordagem. Sem introduções. Direto ao ponto. Use <strong>...</strong> para negritos. Não use asteriscos.',
+        messages: [{ role: 'user', content: texto }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const resumo = data.content?.[0]?.text || '';
+    if (!resumo) throw new Error('Sem resposta da IA');
+
+    if (confirm('Substituir a análise pelo resumo?')) {
+      resultEl.innerHTML = resumo.replace(/\n/g, '<br>');
+      salvarRascunho();
+    }
+  } catch (err) {
+    showToast('Erro ao resumir: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Resumir análise';
   }
 }
 
