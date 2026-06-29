@@ -337,6 +337,12 @@ const VIEW_LABELS = {
   RotacaoE:   'Rotação Esquerda',
 };
 const CHAIN_KEYS = new Set(['Flexao', 'Extensao', 'FlexaoLatD', 'FlexaoLatE', 'RotacaoD', 'RotacaoE']);
+const PAIR_MAP = {
+  FlexaoLatD: 'FlexaoLatE',
+  FlexaoLatE: 'FlexaoLatD',
+  RotacaoD:   'RotacaoE',
+  RotacaoE:   'RotacaoD',
+};
 
 function coletarContextoClinico() {
   const v = id => (document.getElementById(id)?.value || '').trim();
@@ -388,16 +394,22 @@ DIRETRIZES:
 Responda em português.`;
 }
 
-function buildChainPrompt(movimento, ctx) {
+function buildChainPrompt(movimento, ctx, comparacao = null) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
     : '';
   const dir3 = ctx
     ? 'Cruze explicitamente os dados clínicos fornecidos com os achados visuais — se o paciente relata dor em determinada região e há tensão ou limitação correspondente visível, conecte os dois de forma fundamentada.'
     : 'Limite a análise ao que é efetivamente visível na imagem.';
+  const comparacaoBlock = comparacao
+    ? `\n<strong>ANÁLISE DO MOVIMENTO CONTRALATERAL JÁ REALIZADA (use exclusivamente para comparação na diretriz 8):</strong>\n${comparacao}\n`
+    : '';
+  const dir8 = comparacao
+    ? `\n8. <strong>Comparação com o lado contralateral:</strong> ao final, adicione um parágrafo intitulado <strong>Comparação entre os lados</strong> comparando os achados deste movimento com os do movimento contralateral acima. Identifique se há simetria ou assimetria, destaque as diferenças clinicamente relevantes e indique o que o padrão bilateral sugere sobre as restrições predominantes do paciente.`
+    : '';
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
-${ctxBlock}
+${ctxBlock}${comparacaoBlock}
 <strong>Convenção de lateralidade:</strong> nas vistas anterior e posterior, o lado DIREITO do paciente aparece no lado ESQUERDO da imagem (como em um espelho). Use sempre o referencial do paciente, não do observador.
 
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário.
@@ -421,7 +433,7 @@ DIRETRIZES:
 6. <strong>Formatação:</strong> use <strong>...</strong> para negritos. Não use asteriscos (**). Estruture em tópicos claros com quebras de linha entre eles.
 
 7. Finalize com um parágrafo de <strong>Análise</strong> sobre o padrão geral de tensão identificado neste movimento.
-
+${dir8}
 Responda em português.`;
 }
 
@@ -434,7 +446,19 @@ async function analisarFoto(key) {
   const resultEl = document.getElementById(`result${key}`);
   const ctx    = coletarContextoClinico();
   const vista  = VIEW_LABELS[key] || key;
-  const prompt = CHAIN_KEYS.has(key) ? buildChainPrompt(vista, ctx) : buildPosturalPrompt(vista, ctx);
+
+  // Se for um teste com par contralateral e o par já foi analisado, passa o texto para comparação
+  let comparacao = null;
+  const parKey = PAIR_MAP[key];
+  if (parKey) {
+    const parEl = document.getElementById(`result${parKey}`);
+    const parTexto = parEl?.textContent?.trim();
+    if (parTexto && !parTexto.startsWith('Analisando') && parEl.classList.contains('visible')) {
+      comparacao = `[${VIEW_LABELS[parKey]}]\n${parTexto}`;
+    }
+  }
+
+  const prompt = CHAIN_KEYS.has(key) ? buildChainPrompt(vista, ctx, comparacao) : buildPosturalPrompt(vista, ctx);
 
   resultEl.className = 'ai-result visible loading';
   resultEl.textContent = 'Analisando com IA...';
