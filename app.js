@@ -1080,10 +1080,11 @@ async function exportarPDF() {
       if (!words.length) return;
 
       const gaps = words.length - 1;
-      const normalSpace = pdf.setFont('helvetica','normal') || pdf.getTextWidth(' ');
+      pdf.setFont('helvetica', 'normal');
+      const normalSpaceW = pdf.getTextWidth(' ');
       const extraPerGap = (!isLastLine && gaps > 0)
-        ? Math.max(0, (colW - totalW) / gaps)
-        : pdf.getTextWidth(' ');
+        ? Math.min(Math.max(0, (colW - totalW) / gaps), normalSpaceW * 2)
+        : normalSpaceW;
 
       let curX = colX;
       for (let i = 0; i < words.length; i++) {
@@ -1612,7 +1613,8 @@ async function exportarPDF() {
     newPage(); addH2('Plano de Tratamento');
 
 
-    const planoHTML = ihtml('planoTratamento') || storedPlanoHTML;
+    const planoEl = document.getElementById('planoTratamento');
+    const planoHTML = planoEl ? planoEl.innerHTML.trim() : storedPlanoHTML;
     console.log('[exportarPDF] planoHTML length:', planoHTML.length);
     if (planoHTML) addPlanoText(planoHTML);
     const linkVedius = val('linkVedius');
