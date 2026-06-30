@@ -865,7 +865,8 @@ async function exportarPDF() {
       const words = str.trim().split(/\s+/);
       if (words.length <= 1) { pdf.text(str, x, y); return; }
       const totalW = words.reduce((s, w) => s + pdf.getTextWidth(w), 0);
-      const gap = (maxW - totalW) / (words.length - 1);
+      const normalSpaceW = pdf.getTextWidth(' ');
+      const gap = Math.min((maxW - totalW) / (words.length - 1), normalSpaceW * 2);
       let wx = x;
       for (const w of words) { pdf.text(w, wx, y); wx += pdf.getTextWidth(w) + gap; }
     };
@@ -1197,7 +1198,12 @@ async function exportarPDF() {
     // ── Renderer do Plano de Tratamento (linha por linha) ────────
     function addPlanoText(html) {
       if (!html || !html.trim()) return;
-      const text = html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+      const text = html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(div|p|li|h[1-6])[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const lines = text.split('\n');
       const lh = 4.5, sz = 9, indX = CX + 8;
 
