@@ -1195,19 +1195,22 @@ async function exportarPDF() {
       dc(0, 0, 0); pdf.setLineWidth(0.3); tc(26, 26, 26);
     }
 
-    // ── Renderer do Plano de Tratamento (linha por linha) ────────
+    // ── Renderer do Plano de Tratamento (preserva negrito/itálico) ─
     function addPlanoText(html) {
       if (!html || !html.trim()) return;
-      const text = html
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/?(div|p|li|h[1-6])[^>]*>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
-      const lines = text.split('\n');
+
+      // Parseia HTML em segmentos preservando bold/italic e quebras de bloco
+      const allSegs = parseHTMLSegs(html);
+      const logicalLines = [];
+      let cur = [];
+      for (const seg of allSegs) {
+        if (seg.nl) { logicalLines.push(cur); cur = []; } else cur.push(seg);
+      }
+      if (cur.length) logicalLines.push(cur);
+      while (logicalLines.length && !logicalLines[logicalLines.length - 1].some(s => s.t?.trim())) logicalLines.pop();
+
       const lh = 4.5, sz = 9, indX = CX + 8;
 
-      // Garante estado correto após qualquer quebra de página
       function resetContentState() {
         pdf.setFontSize(sz); pdf.setFont('helvetica', 'normal'); tc(26, 29, 35);
         dc(0, 0, 0); pdf.setLineWidth(0.3);
@@ -1216,10 +1219,41 @@ async function exportarPDF() {
         if (cy + needed > BOT) { newPage(); resetContentState(); }
       }
 
-      console.log('[addPlanoText] total linhas:', lines.length);
+      // Reconstrói HTML mínimo a partir de segmentos (para wrapHTMLToLines)
+      function segsToHTML(segs) {
+        return segs.map(s => {
+          const t = (s.t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          if (s.bold && s.italic) return `<b><i>${t}</i></b>`;
+          if (s.bold) return `<b>${t}</b>`;
+          if (s.italic) return `<i>${t}</i>`;
+          return t;
+        }).join('');
+      }
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+      // Remove N caracteres do início dos segmentos (para strips de prefixo "1. " / "– ")
+      function stripLeading(segs, n) {
+        const out = []; let rem = n;
+        for (const seg of segs) {
+          if (rem <= 0) { out.push(seg); continue; }
+          const len = (seg.t || '').length;
+          if (len <= rem) { rem -= len; } else { out.push({ ...seg, t: seg.t.slice(rem) }); rem = 0; }
+        }
+        return out;
+      }
+
+      // Word-wrap segmentos e renderiza com bold/italic via renderFormattedLine
+      function addSegsBlock(segs, x, w) {
+        if (!segs.some(s => s.t?.trim())) return;
+        const wrLines = wrapHTMLToLines(segsToHTML(segs), w, sz);
+        for (let li = 0; li < wrLines.length; li++) {
+          pageBreakIfNeeded(lh);
+          renderFormattedLine(wrLines[li], x, w, cy + 3.5, sz, li === wrLines.length - 1);
+          cy += lh;
+        }
+      }
+
+      for (const lineSegs of logicalLines) {
+        const line = lineSegs.map(s => s.t || '').join('').trim();
         if (!line) { if (cy + 2 <= BOT) cy += 2; continue; }
 
         // Título: tudo maiúsculo terminando em ':'
@@ -1251,55 +1285,32 @@ async function exportarPDF() {
         // Lista numerada: "1. texto" ou "1) texto"
         const numMatch = line.match(/^(\d+)[.)]\s+(.+)$/);
         if (numMatch) {
-          const content = numMatch[2];
           resetContentState();
-          const wrapped = pdf.splitTextToSize(content, CW - 10);
-          pageBreakIfNeeded(Math.min(wrapped.length, 3) * lh + 2);
+          pageBreakIfNeeded(lh + 2);
           pdf.text(numMatch[1] + '.', CX + 2, cy + 3.5);
-          wrapped.forEach((wl, wi) => {
-            pageBreakIfNeeded(lh);
-            if (wi < wrapped.length - 1) justifyLine(wl, indX, cy + 3.5, CW - 10);
-            else pdf.text(wl, indX, cy + 3.5);
-            cy += lh;
-          });
+          addSegsBlock(stripLeading(lineSegs, line.length - numMatch[2].length), indX, CW - 10);
           cy += 1;
           continue;
         }
 
         // Bullet: "- texto" ou "– texto"
         if (/^[-–]\s/.test(line)) {
-          const content = line.slice(2).trim();
           resetContentState();
-          const wrapped = pdf.splitTextToSize(content, CW - 10);
-          pageBreakIfNeeded(Math.min(wrapped.length, 3) * lh + 2);
+          pageBreakIfNeeded(lh + 2);
           fc(194, 86, 9); dc(194, 86, 9);
           pdf.circle(CX + 4, cy + 2.8, 0.9, 'F');
           dc(0, 0, 0); fc(255, 255, 255);
-          wrapped.forEach((wl, wi) => {
-            pageBreakIfNeeded(lh);
-            resetContentState();
-            if (wi < wrapped.length - 1) justifyLine(wl, indX, cy + 3.5, CW - 10);
-            else pdf.text(wl, indX, cy + 3.5);
-            cy += lh;
-          });
+          addSegsBlock(stripLeading(lineSegs, 2), indX, CW - 10);
           cy += 1;
           continue;
         }
 
         // Texto corrido
         resetContentState();
-        const wrapped = pdf.splitTextToSize(line, CW);
-        pageBreakIfNeeded(Math.min(wrapped.length, 3) * lh + 1);
-        wrapped.forEach((wl, wi) => {
-          pageBreakIfNeeded(lh);
-          if (wi < wrapped.length - 1) justifyLine(wl, CX, cy + 3.5, CW);
-          else pdf.text(wl, CX, cy + 3.5);
-          cy += lh;
-        });
+        addSegsBlock(lineSegs, CX, CW);
         cy += 1;
       }
 
-      console.log('[addPlanoText] concluído. cy final:', cy);
       dc(0, 0, 0); pdf.setLineWidth(0.3); tc(26, 26, 26);
     }
 
