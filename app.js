@@ -1028,6 +1028,49 @@ async function exportarPDF() {
     }
 
     // ── 2-column pair: foto esq + foto dir + texto abaixo de cada ─
+    // Converte HTML em linhas formatadas para renderização em coluna
+    function wrapHTMLToLines(html, colWidth, size) {
+      if (!html || !html.trim()) return [];
+      const segs = parseHTMLSegs(html);
+      while (segs.length && segs[segs.length - 1].nl) segs.pop();
+      if (!segs.length) return [];
+      pdf.setFontSize(size);
+      const lines = [];
+      let curLine = [], lineW = 0;
+      const pushLine = () => { if (curLine.length) { lines.push(curLine); curLine = []; lineW = 0; } };
+      for (const seg of segs) {
+        if (seg.nl) { pushLine(); continue; }
+        const style = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+        pdf.setFont('helvetica', style);
+        const words = seg.t.replace(/\s+/g, ' ').split(' ');
+        for (const w of words) {
+          if (!w) continue;
+          const ww = pdf.getTextWidth(w + ' ');
+          if (lineW + ww > colWidth + 0.5 && lineW > 0) pushLine();
+          const last = curLine[curLine.length - 1];
+          if (last && last.bold === seg.bold && last.italic === seg.italic) {
+            last.t += w + ' '; last.w += ww;
+          } else {
+            curLine.push({ t: w + ' ', bold: seg.bold, italic: seg.italic, w: ww });
+          }
+          lineW += ww;
+        }
+      }
+      pushLine();
+      return lines;
+    }
+
+    function renderFormattedLine(lineSegs, colX, y, size) {
+      pdf.setFontSize(size);
+      let curX = colX;
+      for (const seg of lineSegs) {
+        const style = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+        pdf.setFont('helvetica', style);
+        pdf.text(seg.t, curX, y);
+        curX += pdf.getTextWidth(seg.t);
+      }
+    }
+
     async function add2ColPair(lLabel, lUrl, lAna, rLabel, rUrl, rAna) {
       const hasL = lUrl || lAna, hasR = rUrl || rAna;
       if (!hasL && !hasR) return;
@@ -1035,19 +1078,12 @@ async function exportarPDF() {
       const lX = CX, rX = CX + colW + 5;
       const photoW = PW / 3; // foto ocupa 1/3 da largura da página (~70mm)
       const fontSize = 8, lineH = 4;
-      const toPlain = html => html
-        ? html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim()
-        : '';
       let lPhH = 0, rPhH = 0;
       if (lUrl) { const [nw, nh] = await getImgDims(lUrl); lPhH = photoW * (nh / nw); }
       if (rUrl) { const [nw, nh] = await getImgDims(rUrl); rPhH = photoW * (nh / nw); }
-      pdf.setFontSize(fontSize);
-      const flowCol = t => {
-        if (!t) return [];
-        const merged = t.split('\n').map(p => p.trim()).filter(Boolean).join(' ');
-        return pdf.splitTextToSize(merged, colW - 1).filter(l => l.trim());
-      };
-      const lLines = flowCol(toPlain(lAna)), rLines = flowCol(toPlain(rAna));
+
+      const lLines = wrapHTMLToLines(lAna, colW - 1, fontSize);
+      const rLines = wrapHTMLToLines(rAna, colW - 1, fontSize);
 
       // Parte 1: cabeçalho + fotos (não divide — garante espaço para tudo junto)
       const photoH = Math.max(lPhH, rPhH);
@@ -1068,24 +1104,19 @@ async function exportarPDF() {
       // Avança cy para depois das fotos
       cy = sy + 10 + photoH + (photoH > 0 ? 4 : 0);
 
-      // Parte 2: texto linha a linha com quebra de página automática e justify
+      // Parte 2: texto formatado linha a linha com quebra de página automática
       if (lLines.length || rLines.length) {
+        const asc = fontSize * 0.353 * 0.82;
         const maxLines = Math.max(lLines.length, rLines.length);
-        pdf.setFontSize(fontSize); pdf.setFont('helvetica', 'normal'); tc(26, 26, 26);
+        tc(26, 26, 26);
         cy += 2;
         for (let li = 0; li < maxLines; li++) {
           if (cy + lineH > BOT) {
             newPage();
-            pdf.setFontSize(fontSize); pdf.setFont('helvetica', 'normal'); tc(26, 26, 26);
+            tc(26, 26, 26);
           }
-          if (li < lLines.length) {
-            if (li < lLines.length - 1) justifyLine(lLines[li], lX, cy + 3, colW - 1);
-            else pdf.text(lLines[li], lX, cy + 3);
-          }
-          if (li < rLines.length) {
-            if (li < rLines.length - 1) justifyLine(rLines[li], rX, cy + 3, colW - 1);
-            else pdf.text(rLines[li], rX, cy + 3);
-          }
+          if (li < lLines.length) renderFormattedLine(lLines[li], lX, cy + asc, fontSize);
+          if (li < rLines.length) renderFormattedLine(rLines[li], rX, cy + asc, fontSize);
           cy += lineH;
         }
       }
@@ -1601,6 +1632,12 @@ function _atualizarBtnResumir() {
 
 document.getElementById('hda').addEventListener('input', _atualizarBtnResumir);
 
+// Sincroniza storedPlanoHTML ao editar o plano manualmente
+document.getElementById('planoTratamento')?.addEventListener('input', function() {
+  storedPlanoHTML = this.innerHTML;
+  salvarRascunho();
+});
+
 // Limpa espaços extras ao colar texto no campo de exames (comum em cópias de PDF)
 document.getElementById('exames').addEventListener('paste', function(e) {
   e.preventDefault();
@@ -1610,7 +1647,11 @@ document.getElementById('exames').addEventListener('paste', function(e) {
     .map(linha => linha.replace(/\s{2,}/g, ' ').trim())
     .join('\n')
     .trim();
-  document.execCommand('insertText', false, limpo);
+  const start = this.selectionStart;
+  const end   = this.selectionEnd;
+  this.value  = this.value.substring(0, start) + limpo + this.value.substring(end);
+  this.selectionStart = this.selectionEnd = start + limpo.length;
+  this.dispatchEvent(new Event('input'));
 });
 
 async function resumirHda() {
@@ -1784,7 +1825,7 @@ function _coletarRascunho(incluirFotos) {
   });
   d.aiResults = {};
   _PHOTO_KEYS.forEach(k => { const el = document.getElementById(`result${k}`); if (el && el.innerHTML.trim()) d.aiResults[k] = el.innerHTML; });
-  d.planoHTML = storedPlanoHTML || document.getElementById('planoTratamento')?.innerHTML || '';
+  d.planoHTML = document.getElementById('planoTratamento')?.innerHTML || storedPlanoHTML || '';
   if (incluirFotos) {
     d.fotos = {};
     _PHOTO_KEYS.forEach(k => { if (photoData[k]) d.fotos[k] = { dataUrl: photoData[k].dataUrl, mimeType: photoData[k].mimeType }; });
