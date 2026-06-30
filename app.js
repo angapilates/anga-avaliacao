@@ -1060,14 +1060,38 @@ async function exportarPDF() {
       return lines;
     }
 
-    function renderFormattedLine(lineSegs, colX, y, size) {
+    function renderFormattedLine(lineSegs, colX, colW, y, size, isLastLine) {
+      if (!lineSegs || !lineSegs.length) return;
       pdf.setFontSize(size);
-      let curX = colX;
+
+      // Coleta todas as palavras com seus estilos
+      const words = [];
+      let totalW = 0;
       for (const seg of lineSegs) {
         const style = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
         pdf.setFont('helvetica', style);
-        pdf.text(seg.t, curX, y);
-        curX += pdf.getTextWidth(seg.t);
+        const wList = seg.t.trim().split(/\s+/).filter(Boolean);
+        for (const w of wList) {
+          const ww = pdf.getTextWidth(w);
+          words.push({ text: w, bold: seg.bold, italic: seg.italic, w: ww });
+          totalW += ww;
+        }
+      }
+      if (!words.length) return;
+
+      const gaps = words.length - 1;
+      const normalSpace = pdf.setFont('helvetica','normal') || pdf.getTextWidth(' ');
+      const extraPerGap = (!isLastLine && gaps > 0)
+        ? Math.max(0, (colW - totalW) / gaps)
+        : pdf.getTextWidth(' ');
+
+      let curX = colX;
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        const style = w.bold && w.italic ? 'bolditalic' : w.bold ? 'bold' : w.italic ? 'italic' : 'normal';
+        pdf.setFont('helvetica', style);
+        pdf.text(w.text, curX, y);
+        curX += w.w + (i < words.length - 1 ? extraPerGap : 0);
       }
     }
 
@@ -1115,8 +1139,8 @@ async function exportarPDF() {
             newPage();
             tc(26, 26, 26);
           }
-          if (li < lLines.length) renderFormattedLine(lLines[li], lX, cy + asc, fontSize);
-          if (li < rLines.length) renderFormattedLine(rLines[li], rX, cy + asc, fontSize);
+          if (li < lLines.length) renderFormattedLine(lLines[li], lX, colW - 1, cy + asc, fontSize, li === lLines.length - 1);
+          if (li < rLines.length) renderFormattedLine(rLines[li], rX, colW - 1, cy + asc, fontSize, li === rLines.length - 1);
           cy += lineH;
         }
       }
@@ -1588,7 +1612,7 @@ async function exportarPDF() {
     newPage(); addH2('Plano de Tratamento');
 
 
-    const planoHTML = storedPlanoHTML || ihtml('planoTratamento');
+    const planoHTML = ihtml('planoTratamento') || storedPlanoHTML;
     console.log('[exportarPDF] planoHTML length:', planoHTML.length);
     if (planoHTML) addPlanoText(planoHTML);
     const linkVedius = val('linkVedius');
