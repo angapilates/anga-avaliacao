@@ -173,6 +173,7 @@
             <button type="button" class="eva-btn" data-val="10">10</button>
           </div>
           <div class="eva-desc" id="evaDesc"></div>
+          <textarea id="obsEva" rows="2" placeholder="Observações sobre a intensidade..."></textarea>
         </div>
 
         <div class="field-group">
@@ -188,13 +189,15 @@
         <div class="field-group">
           <label>Tipo de dor</label>
           <div class="toggle-group">
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="aguda">Aguda</button>
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="cronica">Crônica</button>
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="latejante">Latejante</button>
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="queimacao">Queimação</button>
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="pontada">Pontada</button>
-            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="irradiada">Irradiada</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="aguda" data-multi="true">Aguda</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="cronica" data-multi="true">Crônica</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="latejante" data-multi="true">Latejante</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="queimacao" data-multi="true">Queimação</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="pontada" data-multi="true">Pontada</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="irradiada" data-multi="true">Irradiada</button>
+            <button type="button" class="toggle-btn" data-group="tipoDor" data-value="peso" data-multi="true">Peso</button>
           </div>
+          <textarea id="obsTipoDor" rows="2" placeholder="Observações sobre o tipo de dor..."></textarea>
         </div>
 
         <div class="field-group">

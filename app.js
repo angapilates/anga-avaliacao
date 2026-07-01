@@ -128,9 +128,9 @@ const EVA_DESC = ['Sem dor','Dor leve','Dor leve','Dor leve','Dor moderada','Dor
 document.addEventListener('click', e => {
   const btn = e.target.closest('.eva-btn');
   if (!btn) return;
-  document.querySelectorAll('.eva-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('evaDesc').textContent = EVA_DESC[parseInt(btn.dataset.val)];
+  btn.classList.toggle('active');
+  const active = [...document.querySelectorAll('.eva-btn.active')].sort((a, b) => +a.dataset.val - +b.dataset.val);
+  document.getElementById('evaDesc').textContent = active.map(b => `${b.dataset.val}/10 – ${EVA_DESC[+b.dataset.val]}`).join('  ·  ');
 });
 
 // ── Visceral hour info ────────────────────────────────────────
@@ -262,13 +262,17 @@ function limparMapaCorporal() {
   bodyStrokes.length = 0;
 }
 
-// ── Toggle buttons (single-select per group) ─────────────────
+// ── Toggle buttons (single-select por padrão; multi-select se data-multi="true") ─
 document.addEventListener('click', e => {
   const btn = e.target.closest('.toggle-btn');
   if (!btn) return;
-  const group = btn.dataset.group;
-  document.querySelectorAll(`.toggle-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn.dataset.multi === 'true') {
+    btn.classList.toggle('active');
+  } else {
+    const group = btn.dataset.group;
+    document.querySelectorAll(`.toggle-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
 });
 
 // ── Result buttons ────────────────────────────────────────────
@@ -659,13 +663,16 @@ function coletarDadosAvaliacao() {
 
   lines.push('');
   lines.push('=== ANÁLISE DA DOR ===');
-  const evaBtn = document.querySelector('.eva-btn.active');
-  if (evaBtn) add('EVA', `${evaBtn.dataset.val}/10 – ${txt('evaDesc')}`);
+  const evaAtivos = [...document.querySelectorAll('.eva-btn.active')].sort((a, b) => +a.dataset.val - +b.dataset.val);
+  if (evaAtivos.length) add('EVA', evaAtivos.map(b => `${b.dataset.val}/10 – ${EVA_DESC[+b.dataset.val]}`).join('  ·  '));
+  add('Observações EVA', v('obsEva'));
   const nMarkers = document.querySelectorAll('.body-marker').length;
-  if (nMarkers) add('Mapa corporal', `${nMarkers} ponto(s) de dor marcado(s)`);
+  const mapDesc = [nMarkers ? `${nMarkers} ponto(s)` : '', bodyStrokes.length ? `${bodyStrokes.length} traço(s)` : ''].filter(Boolean).join(' + ');
+  if (mapDesc) add('Mapa corporal', mapDesc);
   add('Frequência',  document.querySelector('.toggle-btn.active[data-group="frequencia"]')?.dataset.value);
-  const tipos = [...document.querySelectorAll('.toggle-btn.active[data-group="tipoDor"]')].map(b => b.dataset.value).join(', ');
+  const tipos = [...document.querySelectorAll('.toggle-btn.active[data-group="tipoDor"]')].map(b => b.textContent.trim()).join(', ');
   add('Tipo de dor', tipos);
+  add('Observações tipo de dor', v('obsTipoDor'));
   add('Piora com',   v('piora'));
   add('Melhora com', v('melhora'));
   add('Horário de maior intensidade', document.querySelector('.toggle-btn.active[data-group="horario"]')?.dataset.value);
@@ -1516,14 +1523,16 @@ async function exportarPDF() {
     // ══════════════════════════════════════════════════════════════
     newPage(); addH2('Análise da Dor');
 
-    const evaBtn = document.querySelector('.eva-btn.active');
-    if (evaBtn) addFieldBadge('Intensidade da dor (EVA)', evaBtn.dataset.val + '/10');
-    const freq    = actBtn('frequencia');
-    const tipoDor = actBtn('tipoDor');
-    const horario = actBtn('horario');
-    if (freq)    addFieldBadge('Frequência', freq);
-    if (tipoDor) addFieldBadge('Tipo de dor', tipoDor);
-    if (horario) addFieldBadge('Horário de maior intensidade', horario);
+    const evaAtivos = [...document.querySelectorAll('.eva-btn.active')].sort((a, b) => +a.dataset.val - +b.dataset.val);
+    if (evaAtivos.length) addFieldBadge('Intensidade da dor (EVA)', evaAtivos.map(b => b.dataset.val + '/10').join('  ·  '));
+    addField('Observações EVA', val('obsEva'));
+    const freq      = actBtn('frequencia');
+    const tipoDores = [...document.querySelectorAll('.toggle-btn[data-group="tipoDor"].active')].map(b => b.textContent.trim()).join(', ');
+    const horario   = actBtn('horario');
+    if (freq)       addFieldBadge('Frequência', freq);
+    if (tipoDores)  addFieldBadge('Tipo de dor', tipoDores);
+    addField('Observações tipo de dor', val('obsTipoDor'));
+    if (horario)    addFieldBadge('Horário de maior intensidade', horario);
     addField('O que piora', val('piora'));
     addField('O que melhora', val('melhora'));
     const visceralSel = document.getElementById('horarioVisceral');
@@ -1926,6 +1935,7 @@ const _FIELD_IDS = [
   'objetivo','queixaPrincipal','hda','diagnostico','codigoCBDF','exames','app','outrosSintomas','medicamentos',
   'avds','sono','alimentacao','outrosHabitos',
   'piora','melhora','horarioVisceral',
+  'obsEva','obsTipoDor',
   'obsPostural',
   'obsCadeias','diafragma','transverso',
   'obsTestes',
@@ -1945,9 +1955,16 @@ function _coletarRascunho(incluirFotos) {
   const rf = document.querySelector('input[name="atividadeFisica"]:checked');
   if (rf) d.atividadeFisica = rf.value;
   d.toggles = {};
-  document.querySelectorAll('.toggle-btn.active').forEach(b => { d.toggles[b.dataset.group] = b.dataset.value; });
-  const evaActive = document.querySelector('.eva-btn.active');
-  d.eva = evaActive ? evaActive.dataset.val : null;
+  document.querySelectorAll('.toggle-btn.active').forEach(b => {
+    const grp = b.dataset.group;
+    if (b.dataset.multi === 'true') {
+      if (!Array.isArray(d.toggles[grp])) d.toggles[grp] = [];
+      d.toggles[grp].push(b.dataset.value);
+    } else {
+      d.toggles[grp] = b.dataset.value;
+    }
+  });
+  d.eva = [...document.querySelectorAll('.eva-btn.active')].map(b => b.dataset.val);
   d.testResults = { ...testResults };
   d.bodyMarkers = [];
   document.querySelectorAll('.body-marker').forEach(m => {
@@ -1993,19 +2010,22 @@ function restaurarRascunho() {
 
   if (d.toggles) {
     Object.entries(d.toggles).forEach(([group, val]) => {
-      document.querySelectorAll(`.toggle-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
-      document.querySelector(`.toggle-btn[data-group="${group}"][data-value="${val}"]`)?.classList.add('active');
+      if (Array.isArray(val)) {
+        val.forEach(v => document.querySelector(`.toggle-btn[data-group="${group}"][data-value="${v}"]`)?.classList.add('active'));
+      } else {
+        document.querySelectorAll(`.toggle-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+        document.querySelector(`.toggle-btn[data-group="${group}"][data-value="${val}"]`)?.classList.add('active');
+      }
     });
   }
 
   if (d.eva != null) {
     document.querySelectorAll('.eva-btn').forEach(b => b.classList.remove('active'));
-    const eb = document.querySelector(`.eva-btn[data-val="${d.eva}"]`);
-    if (eb) {
-      eb.classList.add('active');
-      const desc = document.getElementById('evaDesc');
-      if (desc) desc.textContent = EVA_DESC[parseInt(d.eva)] || '';
-    }
+    const vals = Array.isArray(d.eva) ? d.eva : [d.eva];
+    vals.forEach(v => document.querySelector(`.eva-btn[data-val="${v}"]`)?.classList.add('active'));
+    const active = [...document.querySelectorAll('.eva-btn.active')].sort((a, b) => +a.dataset.val - +b.dataset.val);
+    const desc = document.getElementById('evaDesc');
+    if (desc) desc.textContent = active.map(b => `${b.dataset.val}/10 – ${EVA_DESC[+b.dataset.val]}`).join('  ·  ');
   }
 
   if (d.testResults) {
