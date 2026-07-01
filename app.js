@@ -463,8 +463,8 @@ const VIEW_LABELS = {
   Extensao:   'Extensão Global',
   FlexaoLatD: 'Flexão Lateral Direita',
   FlexaoLatE: 'Flexão Lateral Esquerda',
-  RotacaoD:   'Rotação Direita',
-  RotacaoE:   'Rotação Esquerda',
+  RotacaoD:   'Rotação Torácica Direita',
+  RotacaoE:   'Rotação Torácica Esquerda',
 };
 const CHAIN_KEYS = new Set(['Flexao', 'Extensao', 'FlexaoLatD', 'FlexaoLatE', 'RotacaoD', 'RotacaoE']);
 const PAIR_MAP = {
@@ -1657,8 +1657,8 @@ async function exportarPDF() {
       { key: 'Extensao',   label: 'Extensão' },
       { key: 'FlexaoLatD', label: 'Flexão Lateral Direita' },
       { key: 'FlexaoLatE', label: 'Flexão Lateral Esquerda' },
-      { key: 'RotacaoD',   label: 'Rotação Direita' },
-      { key: 'RotacaoE',   label: 'Rotação Esquerda' },
+      { key: 'RotacaoD',   label: 'Rotação Torácica Direita' },
+      { key: 'RotacaoE',   label: 'Rotação Torácica Esquerda' },
     ];
     for (let i = 0; i < chainViews.length; i += 2) {
       const l = chainViews[i], r = chainViews[i + 1];
