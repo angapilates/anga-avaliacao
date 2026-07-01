@@ -163,29 +163,103 @@ document.getElementById('horarioVisceral').addEventListener('change', function (
 
 // ── Body map overlay ──────────────────────────────────────────
 const svgOverlay = document.getElementById('svgMapaCorporal');
+const bodyStrokes = []; // [{points:[{x,y},...]}] coords 0-100%
+
+function _bmAddStrokeSVG(pointsPct) {
+  if (!svgOverlay || pointsPct.length < 2) return;
+  const rect = svgOverlay.getBoundingClientRect();
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', pointsPct.map(p => `${p.x / 100 * rect.width},${p.y / 100 * rect.height}`).join(' '));
+  pl.setAttribute('fill', 'none');
+  pl.setAttribute('stroke', '#c25609');
+  pl.setAttribute('stroke-width', '3');
+  pl.setAttribute('stroke-linecap', 'round');
+  pl.setAttribute('stroke-linejoin', 'round');
+  pl.classList.add('body-stroke');
+  svgOverlay.appendChild(pl);
+}
+
 if (svgOverlay) {
-  svgOverlay.addEventListener('click', e => {
-    if (e.target.classList.contains('body-marker')) {
-      e.target.remove();
-      return;
-    }
+  svgOverlay.style.touchAction = 'none';
+  let _bmActive = false, _bmDragging = false;
+  let _bmStartPx = { x: 0, y: 0 };
+  let _bmCurrentPct = [];
+  let _bmLivePoly = null;
+
+  function _bmPxFromEvent(e) {
     const rect = svgOverlay.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', x + '%');
-    dot.setAttribute('cy', y + '%');
-    dot.setAttribute('r', '6');
-    dot.setAttribute('fill', '#c25609');
-    dot.setAttribute('stroke', '#fff');
-    dot.setAttribute('stroke-width', '1.5');
-    dot.classList.add('body-marker');
-    svgOverlay.appendChild(dot);
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+  function _bmToPct(px, py) {
+    const rect = svgOverlay.getBoundingClientRect();
+    return { x: +(px / rect.width * 100).toFixed(2), y: +(py / rect.height * 100).toFixed(2) };
+  }
+  function _bmUpdateLivePoly() {
+    if (!_bmLivePoly) return;
+    const rect = svgOverlay.getBoundingClientRect();
+    _bmLivePoly.setAttribute('points',
+      _bmCurrentPct.map(p => `${p.x / 100 * rect.width},${p.y / 100 * rect.height}`).join(' ')
+    );
+  }
+
+  svgOverlay.addEventListener('pointerdown', e => {
+    if (e.target.classList.contains('body-marker')) { e.target.remove(); _agendarSave(); return; }
+    if (e.target.classList.contains('body-stroke')) return;
+    _bmActive = true; _bmDragging = false;
+    const px = _bmPxFromEvent(e);
+    _bmStartPx = px;
+    _bmCurrentPct = [_bmToPct(px.x, px.y)];
+    _bmLivePoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    _bmLivePoly.setAttribute('fill', 'none');
+    _bmLivePoly.setAttribute('stroke', '#c25609');
+    _bmLivePoly.setAttribute('stroke-width', '3');
+    _bmLivePoly.setAttribute('stroke-linecap', 'round');
+    _bmLivePoly.setAttribute('stroke-linejoin', 'round');
+    _bmLivePoly.classList.add('body-stroke');
+    svgOverlay.appendChild(_bmLivePoly);
+    svgOverlay.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  svgOverlay.addEventListener('pointermove', e => {
+    if (!_bmActive) return;
+    const px = _bmPxFromEvent(e);
+    const dx = px.x - _bmStartPx.x, dy = px.y - _bmStartPx.y;
+    if (!_bmDragging && Math.sqrt(dx * dx + dy * dy) > 6) _bmDragging = true;
+    if (_bmDragging) { _bmCurrentPct.push(_bmToPct(px.x, px.y)); _bmUpdateLivePoly(); }
+    e.preventDefault();
+  });
+
+  svgOverlay.addEventListener('pointerup', e => {
+    if (!_bmActive) return;
+    _bmActive = false;
+    if (!_bmDragging) {
+      _bmLivePoly?.remove(); _bmLivePoly = null;
+      const pct = _bmToPct(_bmStartPx.x, _bmStartPx.y);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', pct.x + '%'); dot.setAttribute('cy', pct.y + '%');
+      dot.setAttribute('r', '6'); dot.setAttribute('fill', '#c25609');
+      dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', '1.5');
+      dot.classList.add('body-marker');
+      svgOverlay.appendChild(dot);
+    } else if (_bmCurrentPct.length >= 2) {
+      bodyStrokes.push({ points: [..._bmCurrentPct] });
+    } else {
+      _bmLivePoly?.remove();
+    }
+    _bmLivePoly = null; _bmCurrentPct = [];
+    _agendarSave();
+  });
+
+  svgOverlay.addEventListener('pointercancel', () => {
+    _bmActive = false; _bmLivePoly?.remove(); _bmLivePoly = null; _bmCurrentPct = [];
   });
 }
 
 function limparMapaCorporal() {
-  document.querySelectorAll('.body-marker').forEach(m => m.remove());
+  document.querySelectorAll('.body-marker, .body-stroke').forEach(m => m.remove());
+  bodyStrokes.length = 0;
 }
 
 // ── Toggle buttons (single-select per group) ─────────────────
@@ -1464,12 +1538,25 @@ async function exportarPDF() {
       const bmH = bmW * (bmNH / bmNW);
       const bmX = CX + (CW - bmW) / 2;
       addGap(2); ensureY(bmH + 8);
-      try { pdf.addImage(BODY_MAP_B64, 'PNG', bmX, cy, bmW, bmH); } catch(e) {}
+      const bmY = cy;
+      try { pdf.addImage(BODY_MAP_B64, 'PNG', bmX, bmY, bmW, bmH); } catch(e) {}
       if (bodyMapMarkers.length) {
         fc(194, 86, 9); dc(255, 255, 255); pdf.setLineWidth(0.5);
         bodyMapMarkers.forEach(m => {
-          pdf.circle(bmX + (m.cx / 100) * bmW, cy + (m.cy / 100) * bmH, 1.5, 'FD');
+          pdf.circle(bmX + (m.cx / 100) * bmW, bmY + (m.cy / 100) * bmH, 1.5, 'FD');
         });
+      }
+      if (bodyStrokes.length) {
+        dc(194, 86, 9); pdf.setLineWidth(1);
+        bodyStrokes.forEach(({ points }) => {
+          for (let i = 1; i < points.length; i++) {
+            pdf.line(
+              bmX + (points[i-1].x / 100) * bmW, bmY + (points[i-1].y / 100) * bmH,
+              bmX + (points[i].x   / 100) * bmW, bmY + (points[i].y   / 100) * bmH
+            );
+          }
+        });
+        dc(0, 0, 0); pdf.setLineWidth(0.3);
       }
       cy += bmH + 2;
       pdf.setFontSize(7.5); pdf.setFont('helvetica', 'italic');
@@ -1866,6 +1953,7 @@ function _coletarRascunho(incluirFotos) {
   document.querySelectorAll('.body-marker').forEach(m => {
     d.bodyMarkers.push({ cx: m.getAttribute('cx'), cy: m.getAttribute('cy') });
   });
+  d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
   d.aiResults = {};
   _PHOTO_KEYS.forEach(k => { const el = document.getElementById(`result${k}`); if (el && el.innerHTML.trim()) d.aiResults[k] = el.innerHTML; });
   d.planoHTML = document.getElementById('planoTratamento')?.innerHTML || storedPlanoHTML || '';
@@ -1938,6 +2026,13 @@ function restaurarRascunho() {
       dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', '1.5');
       dot.classList.add('body-marker');
       svgOverlay.appendChild(dot);
+    });
+  }
+
+  if (d.bodyStrokes?.length && svgOverlay) {
+    d.bodyStrokes.forEach(stroke => {
+      bodyStrokes.push({ points: stroke.points });
+      _bmAddStrokeSVG(stroke.points);
     });
   }
 
