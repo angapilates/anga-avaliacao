@@ -2096,7 +2096,17 @@ function restaurarRascunho() {
   if (d.aiResults) {
     Object.entries(d.aiResults).forEach(([k, html]) => {
       const el = document.getElementById(`result${k}`);
-      if (el) el.innerHTML = html;
+      if (!el) return;
+      el.innerHTML = html;
+      if (!document.getElementById(`resumirAnaliseBtn${k}`)) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `resumirAnaliseBtn${k}`;
+        btn.className = 'btn-resumir-analise';
+        btn.textContent = 'Resumir análise';
+        btn.onclick = () => resumirAnalise(k);
+        el.parentNode.insertBefore(btn, el.nextSibling);
+      }
     });
   }
 
