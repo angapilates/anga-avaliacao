@@ -230,6 +230,7 @@ if (bodyMapCanvas) {
     e.preventDefault();
     _bmResize();
     const pos = _bmGetPos(e);
+    if (_bmEraserMode) { _bmActive = true; _bmErase(pos.x, pos.y); return; }
     const di = _bmFindDot(pos.x, pos.y);
     if (di >= 0) { bodyDots.splice(di, 1); _bmRedraw(); _agendarSave(); return; }
     _bmActive = true; _bmDragging = false;
@@ -240,6 +241,7 @@ if (bodyMapCanvas) {
     if (!_bmActive) return;
     e.preventDefault();
     const pos = _bmGetPos(e);
+    if (_bmEraserMode) { _bmErase(pos.x, pos.y); return; }
     const dx = pos.x - _bmStartPx.x, dy = pos.y - _bmStartPx.y;
     if (!_bmDragging && Math.sqrt(dx * dx + dy * dy) > 6) _bmDragging = true;
     if (!_bmDragging) return;
@@ -260,6 +262,7 @@ if (bodyMapCanvas) {
   function _bmOnEnd(e) {
     if (!_bmActive) return;
     _bmActive = false; e.preventDefault();
+    if (_bmEraserMode) return;
     if (!_bmDragging) {
       bodyDots.push(_bmToPct(_bmStartPx.x, _bmStartPx.y));
       _bmRedraw();
@@ -284,6 +287,31 @@ if (bodyMapCanvas) {
 
 function limparMapaCorporal() {
   bodyDots.length = 0; bodyStrokes.length = 0; _bmRedraw();
+}
+
+let _bmEraserMode = false;
+
+function _bmErase(px, py) {
+  if (!bodyMapCanvas) return;
+  const W = bodyMapCanvas.width, H = bodyMapCanvas.height, R = 15;
+  let changed = false;
+  for (let i = bodyStrokes.length - 1; i >= 0; i--) {
+    for (const p of bodyStrokes[i].points) {
+      const dx = p.x / 100 * W - px, dy = p.y / 100 * H - py;
+      if (dx * dx + dy * dy <= R * R) { bodyStrokes.splice(i, 1); changed = true; break; }
+    }
+  }
+  for (let i = bodyDots.length - 1; i >= 0; i--) {
+    const dx = bodyDots[i].x / 100 * W - px, dy = bodyDots[i].y / 100 * H - py;
+    if (dx * dx + dy * dy <= R * R) { bodyDots.splice(i, 1); changed = true; }
+  }
+  if (changed) { _bmRedraw(); _agendarSave(); }
+}
+
+function toggleBorracha() {
+  _bmEraserMode = !_bmEraserMode;
+  document.getElementById('btnBorracha')?.classList.toggle('active', _bmEraserMode);
+  if (bodyMapCanvas) bodyMapCanvas.style.cursor = _bmEraserMode ? 'cell' : '';
 }
 
 // ── Toggle buttons (single-select por padrão; multi-select se data-multi="true") ─

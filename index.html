@@ -154,7 +154,10 @@
             <img src="assets/Capturar.PNG" class="body-map-img" alt="Mapa corporal — anterior, posterior, lateral direita e esquerda"/>
             <canvas class="body-map-overlay" id="canvasMapaCorporal"></canvas>
           </div>
-          <button type="button" class="body-map-clear" onclick="limparMapaCorporal()">Limpar marcadores</button>
+          <div class="body-map-actions">
+            <button type="button" class="body-tool-btn" id="btnBorracha" onclick="toggleBorracha()">Borracha</button>
+            <button type="button" class="body-map-clear" onclick="limparMapaCorporal()">Limpar tudo</button>
+          </div>
         </div>
 
         <div class="field-group">

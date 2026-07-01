@@ -406,6 +406,37 @@ textarea { resize: vertical; }
   border-color: var(--accent);
   color: var(--accent);
 }
+.body-map-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.body-map-actions .body-map-clear {
+  display: inline-block;
+  margin: 0;
+}
+.body-tool-btn {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.body-tool-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.body-tool-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 
 /* CBDF INLINE */
 .cbdf-inline-row {
