@@ -161,105 +161,129 @@ document.getElementById('horarioVisceral').addEventListener('change', function (
   }
 });
 
-// ── Body map overlay ──────────────────────────────────────────
-const svgOverlay = document.getElementById('svgMapaCorporal');
-const bodyStrokes = []; // [{points:[{x,y},...]}] coords 0-100%
+// ── Body map canvas ───────────────────────────────────────────
+const bodyMapCanvas = document.getElementById('canvasMapaCorporal');
+const bodyDots    = [];  // [{x,y}] percentages 0-100
+const bodyStrokes = [];  // [{points:[{x,y},...]}] percentages 0-100
 
-function _bmAddStrokeSVG(pointsPct) {
-  if (!svgOverlay || pointsPct.length < 2) return;
-  const rect = svgOverlay.getBoundingClientRect();
-  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  pl.setAttribute('points', pointsPct.map(p => `${p.x / 100 * rect.width},${p.y / 100 * rect.height}`).join(' '));
-  pl.setAttribute('fill', 'none');
-  pl.setAttribute('stroke', '#c25609');
-  pl.setAttribute('stroke-width', '3');
-  pl.setAttribute('stroke-linecap', 'round');
-  pl.setAttribute('stroke-linejoin', 'round');
-  pl.classList.add('body-stroke');
-  svgOverlay.appendChild(pl);
+function _bmResize() {
+  if (!bodyMapCanvas) return;
+  const rect = bodyMapCanvas.getBoundingClientRect();
+  if (!rect.width) return;
+  const W = Math.round(rect.width), H = Math.round(rect.height);
+  if (bodyMapCanvas.width === W && bodyMapCanvas.height === H) return;
+  bodyMapCanvas.width = W; bodyMapCanvas.height = H;
+  _bmRedraw();
 }
 
-if (svgOverlay) {
-  svgOverlay.style.touchAction = 'none';
-  let _bmActive = false, _bmDragging = false;
-  let _bmStartPx = { x: 0, y: 0 };
-  let _bmCurrentPct = [];
-  let _bmLivePoly = null;
+function _bmRedraw() {
+  if (!bodyMapCanvas || !bodyMapCanvas.width) return;
+  const ctx = bodyMapCanvas.getContext('2d');
+  const W = bodyMapCanvas.width, H = bodyMapCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  function _bmPxFromEvent(e) {
-    const rect = svgOverlay.getBoundingClientRect();
+  // Traços
+  ctx.strokeStyle = '#c25609'; ctx.lineWidth = 3;
+  for (const s of bodyStrokes) {
+    if (s.points.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(s.points[0].x / 100 * W, s.points[0].y / 100 * H);
+    for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x / 100 * W, s.points[i].y / 100 * H);
+    ctx.stroke();
+  }
+
+  // Pontos
+  for (const d of bodyDots) {
+    const x = d.x / 100 * W, y = d.y / 100 * H;
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#c25609'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+
+if (bodyMapCanvas) {
+  new ResizeObserver(_bmResize).observe(bodyMapCanvas);
+
+  let _bmActive = false, _bmDragging = false;
+  let _bmStartPx = { x: 0, y: 0 }, _bmCurrentPct = [];
+
+  function _bmGetPos(e) {
+    const rect = bodyMapCanvas.getBoundingClientRect();
     const src = e.touches ? e.touches[0] : e;
     return { x: src.clientX - rect.left, y: src.clientY - rect.top };
   }
   function _bmToPct(px, py) {
-    const rect = svgOverlay.getBoundingClientRect();
-    return { x: +(px / rect.width * 100).toFixed(2), y: +(py / rect.height * 100).toFixed(2) };
+    const W = bodyMapCanvas.width || 1, H = bodyMapCanvas.height || 1;
+    return { x: +(px / W * 100).toFixed(2), y: +(py / H * 100).toFixed(2) };
   }
-  function _bmUpdateLivePoly() {
-    if (!_bmLivePoly) return;
-    const rect = svgOverlay.getBoundingClientRect();
-    _bmLivePoly.setAttribute('points',
-      _bmCurrentPct.map(p => `${p.x / 100 * rect.width},${p.y / 100 * rect.height}`).join(' ')
-    );
+  function _bmFindDot(px, py) {
+    const W = bodyMapCanvas.width, H = bodyMapCanvas.height;
+    for (let i = bodyDots.length - 1; i >= 0; i--) {
+      const dx = bodyDots[i].x / 100 * W - px, dy = bodyDots[i].y / 100 * H - py;
+      if (Math.sqrt(dx * dx + dy * dy) <= 10) return i;
+    }
+    return -1;
   }
 
-  svgOverlay.addEventListener('pointerdown', e => {
-    if (e.target.classList.contains('body-marker')) { e.target.remove(); _agendarSave(); return; }
-    if (e.target.classList.contains('body-stroke')) return;
+  function _bmOnStart(e) {
+    e.preventDefault();
+    _bmResize();
+    const pos = _bmGetPos(e);
+    const di = _bmFindDot(pos.x, pos.y);
+    if (di >= 0) { bodyDots.splice(di, 1); _bmRedraw(); _agendarSave(); return; }
     _bmActive = true; _bmDragging = false;
-    const px = _bmPxFromEvent(e);
-    _bmStartPx = px;
-    _bmCurrentPct = [_bmToPct(px.x, px.y)];
-    _bmLivePoly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    _bmLivePoly.setAttribute('fill', 'none');
-    _bmLivePoly.setAttribute('stroke', '#c25609');
-    _bmLivePoly.setAttribute('stroke-width', '3');
-    _bmLivePoly.setAttribute('stroke-linecap', 'round');
-    _bmLivePoly.setAttribute('stroke-linejoin', 'round');
-    _bmLivePoly.classList.add('body-stroke');
-    svgOverlay.appendChild(_bmLivePoly);
-    svgOverlay.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
+    _bmStartPx = pos; _bmCurrentPct = [_bmToPct(pos.x, pos.y)];
+  }
 
-  svgOverlay.addEventListener('pointermove', e => {
+  function _bmOnMove(e) {
     if (!_bmActive) return;
-    const px = _bmPxFromEvent(e);
-    const dx = px.x - _bmStartPx.x, dy = px.y - _bmStartPx.y;
+    e.preventDefault();
+    const pos = _bmGetPos(e);
+    const dx = pos.x - _bmStartPx.x, dy = pos.y - _bmStartPx.y;
     if (!_bmDragging && Math.sqrt(dx * dx + dy * dy) > 6) _bmDragging = true;
-    if (_bmDragging) { _bmCurrentPct.push(_bmToPct(px.x, px.y)); _bmUpdateLivePoly(); }
-    e.preventDefault();
-  });
+    if (!_bmDragging) return;
+    const prev = _bmCurrentPct[_bmCurrentPct.length - 1];
+    const pct  = _bmToPct(pos.x, pos.y);
+    _bmCurrentPct.push(pct);
+    // Desenha apenas o novo segmento (sem redraw completo)
+    const ctx = bodyMapCanvas.getContext('2d');
+    const W = bodyMapCanvas.width, H = bodyMapCanvas.height;
+    ctx.strokeStyle = '#c25609'; ctx.lineWidth = 3;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(prev.x / 100 * W, prev.y / 100 * H);
+    ctx.lineTo(pct.x  / 100 * W, pct.y  / 100 * H);
+    ctx.stroke();
+  }
 
-  svgOverlay.addEventListener('pointerup', e => {
+  function _bmOnEnd(e) {
     if (!_bmActive) return;
-    _bmActive = false;
+    _bmActive = false; e.preventDefault();
     if (!_bmDragging) {
-      _bmLivePoly?.remove(); _bmLivePoly = null;
-      const pct = _bmToPct(_bmStartPx.x, _bmStartPx.y);
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', pct.x + '%'); dot.setAttribute('cy', pct.y + '%');
-      dot.setAttribute('r', '6'); dot.setAttribute('fill', '#c25609');
-      dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', '1.5');
-      dot.classList.add('body-marker');
-      svgOverlay.appendChild(dot);
+      bodyDots.push(_bmToPct(_bmStartPx.x, _bmStartPx.y));
+      _bmRedraw();
     } else if (_bmCurrentPct.length >= 2) {
       bodyStrokes.push({ points: [..._bmCurrentPct] });
-    } else {
-      _bmLivePoly?.remove();
     }
-    _bmLivePoly = null; _bmCurrentPct = [];
-    _agendarSave();
-  });
+    _bmCurrentPct = []; _agendarSave();
+  }
 
-  svgOverlay.addEventListener('pointercancel', () => {
-    _bmActive = false; _bmLivePoly?.remove(); _bmLivePoly = null; _bmCurrentPct = [];
-  });
+  function _bmOnCancel() { _bmActive = false; _bmCurrentPct = []; _bmRedraw(); }
+
+  // Touch
+  bodyMapCanvas.addEventListener('touchstart',  _bmOnStart,  { passive: false });
+  bodyMapCanvas.addEventListener('touchmove',   _bmOnMove,   { passive: false });
+  bodyMapCanvas.addEventListener('touchend',    _bmOnEnd,    { passive: false });
+  bodyMapCanvas.addEventListener('touchcancel', _bmOnCancel);
+  // Mouse
+  bodyMapCanvas.addEventListener('mousedown', _bmOnStart);
+  window.addEventListener('mousemove', e => { if (_bmActive) _bmOnMove(e); });
+  window.addEventListener('mouseup',   e => { if (_bmActive) _bmOnEnd(e); });
 }
 
 function limparMapaCorporal() {
-  document.querySelectorAll('.body-marker, .body-stroke').forEach(m => m.remove());
-  bodyStrokes.length = 0;
+  bodyDots.length = 0; bodyStrokes.length = 0; _bmRedraw();
 }
 
 // ── Toggle buttons (single-select por padrão; multi-select se data-multi="true") ─
@@ -666,8 +690,7 @@ function coletarDadosAvaliacao() {
   const evaAtivos = [...document.querySelectorAll('.eva-btn.active')].sort((a, b) => +a.dataset.val - +b.dataset.val);
   if (evaAtivos.length) add('EVA', evaAtivos.map(b => `${b.dataset.val}/10 – ${EVA_DESC[+b.dataset.val]}`).join('  ·  '));
   add('Observações EVA', v('obsEva'));
-  const nMarkers = document.querySelectorAll('.body-marker').length;
-  const mapDesc = [nMarkers ? `${nMarkers} ponto(s)` : '', bodyStrokes.length ? `${bodyStrokes.length} traço(s)` : ''].filter(Boolean).join(' + ');
+  const mapDesc = [bodyDots.length ? `${bodyDots.length} ponto(s)` : '', bodyStrokes.length ? `${bodyStrokes.length} traço(s)` : ''].filter(Boolean).join(' + ');
   if (mapDesc) add('Mapa corporal', mapDesc);
   add('Frequência',  document.querySelector('.toggle-btn.active[data-group="frequencia"]')?.dataset.value);
   const tipos = [...document.querySelectorAll('.toggle-btn.active[data-group="tipoDor"]')].map(b => b.textContent.trim()).join(', ');
@@ -1401,10 +1424,7 @@ async function exportarPDF() {
     const actBtn = grp => document.querySelector(`.toggle-btn[data-group="${grp}"].active`)?.textContent?.trim() || '';
 
     // ── Body map: coletar marcadores SVG para renderização direta ─
-    const bodyMapMarkers = [...document.querySelectorAll('.body-marker')].map(c => ({
-      cx: parseFloat(c.getAttribute('cx')),
-      cy: parseFloat(c.getAttribute('cy'))
-    }));
+    const bodyMapMarkers = bodyDots;
 
     // ── Dados do paciente + logo dims (usados por paintPage) ─────
     nomePaciente = val('nomeCompleto') || 'Avaliação Física';
@@ -1552,7 +1572,7 @@ async function exportarPDF() {
       if (bodyMapMarkers.length) {
         fc(194, 86, 9); dc(255, 255, 255); pdf.setLineWidth(0.5);
         bodyMapMarkers.forEach(m => {
-          pdf.circle(bmX + (m.cx / 100) * bmW, bmY + (m.cy / 100) * bmH, 1.5, 'FD');
+          pdf.circle(bmX + (m.x / 100) * bmW, bmY + (m.y / 100) * bmH, 1.5, 'FD');
         });
       }
       if (bodyStrokes.length) {
@@ -1966,10 +1986,7 @@ function _coletarRascunho(incluirFotos) {
   });
   d.eva = [...document.querySelectorAll('.eva-btn.active')].map(b => b.dataset.val);
   d.testResults = { ...testResults };
-  d.bodyMarkers = [];
-  document.querySelectorAll('.body-marker').forEach(m => {
-    d.bodyMarkers.push({ cx: m.getAttribute('cx'), cy: m.getAttribute('cy') });
-  });
+  d.bodyMarkers = bodyDots.map(d => ({ cx: d.x + '%', cy: d.y + '%' }));
   d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
   d.aiResults = {};
   _PHOTO_KEYS.forEach(k => { const el = document.getElementById(`result${k}`); if (el && el.innerHTML.trim()) d.aiResults[k] = el.innerHTML; });
@@ -2038,22 +2055,14 @@ function restaurarRascunho() {
     if (testResults['discinese-e']) document.getElementById('discinese-tipo-e')?.classList.remove('hidden');
   }
 
-  if (d.bodyMarkers?.length && svgOverlay) {
-    d.bodyMarkers.forEach(({ cx, cy }) => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
-      dot.setAttribute('r', '6'); dot.setAttribute('fill', '#c25609');
-      dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', '1.5');
-      dot.classList.add('body-marker');
-      svgOverlay.appendChild(dot);
-    });
+  if (d.bodyMarkers?.length) {
+    d.bodyMarkers.forEach(m => bodyDots.push({ x: parseFloat(m.cx), y: parseFloat(m.cy) }));
   }
-
-  if (d.bodyStrokes?.length && svgOverlay) {
-    d.bodyStrokes.forEach(stroke => {
-      bodyStrokes.push({ points: stroke.points });
-      _bmAddStrokeSVG(stroke.points);
-    });
+  if (d.bodyStrokes?.length) {
+    d.bodyStrokes.forEach(s => bodyStrokes.push({ points: s.points }));
+  }
+  if (bodyMapCanvas && (bodyDots.length || bodyStrokes.length)) {
+    requestAnimationFrame(() => { _bmResize(); _bmRedraw(); });
   }
 
   if (d.aiResults) {
