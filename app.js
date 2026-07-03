@@ -4,6 +4,7 @@ const LOGO_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABLAAAAPoCAYAAADO
 const TOTAL_SECTIONS = 6;
 let currentSection = 1;
 let maxVisited = 1;
+let MIN_SECTION = 1; // sobe para 2 em modo reavaliação (Anamnese bloqueada)
 let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 const testResults = {};
@@ -71,7 +72,7 @@ function injectFormatBar(resultEl) { /* barra agora é global — nada a fazer p
 // ── Navigation ────────────────────────────────────────────────
 function navigate(dir) {
   const next = currentSection + dir;
-  if (next < 1 || next > TOTAL_SECTIONS) return;
+  if (next < MIN_SECTION || next > TOTAL_SECTIONS) return;
   document.getElementById(`section${currentSection}`).classList.remove('active');
   currentSection = next;
   if (currentSection > maxVisited) maxVisited = currentSection;
@@ -81,7 +82,7 @@ function navigate(dir) {
 }
 
 function goToSection(n) {
-  if (n < 1 || n > TOTAL_SECTIONS) return;
+  if (n < MIN_SECTION || n > TOTAL_SECTIONS) return;
   document.getElementById(`section${currentSection}`).classList.remove('active');
   currentSection = n;
   if (currentSection > maxVisited) maxVisited = currentSection;
@@ -105,7 +106,7 @@ function updateNav() {
 
   const back = document.getElementById('btnBack');
   const next = document.getElementById('btnNext');
-  back.style.display = currentSection === 1 ? 'none' : '';
+  back.style.display = currentSection === MIN_SECTION ? 'none' : '';
 
   if (currentSection === TOTAL_SECTIONS) {
     next.style.display = 'none';
@@ -823,35 +824,32 @@ async function gerarPlanoTratamento() {
   const resumo = coletarDadosAvaliacao();
   const prompt = `Você é fisioterapeuta especialista em Pilates Clínico. Elabore o plano de tratamento abaixo com base exclusivamente nos dados fornecidos.
 
-Regras gerais: sem markdown, sem asteriscos, sem emojis, sem frases introdutórias ou recursos contextuais. Inicie direto pelo primeiro título. Use os títulos exatamente como indicados abaixo, em letras maiúsculas, seguidos de dois-pontos e quebra de linha. Documento clínico objetivo para impressão.
+Regras gerais: sem markdown, sem travessões (—), sem asteriscos, sem emojis, sem frases introdutórias ou recursos contextuais. Inicie direto pelo primeiro título. Use os títulos exatamente como indicados abaixo, em letras maiúsculas, seguidos de dois-pontos e quebra de linha. O texto deve soar como um laudo clínico redigido por um fisioterapeuta, documento objetivo para impressão.
 
 DADOS DA AVALIAÇÃO:
 ${resumo}
 
-Estrutura obrigatória:
-
-OBJETIVOS TERAPÊUTICOS:
-(lista numerada com cada objetivo em item separado)
+Estrutura obrigatória, exatamente nesta ordem:
 
 FUNDAMENTAÇÃO CLÍNICA:
 (texto corrido, 3-5 linhas, conectando os achados entre si)
 
-EXERCÍCIOS RECOMENDADOS:
-Fase 1 – Básico (semanas 1-4):
-(lista numerada dos exercícios com breve justificativa de cada um)
-Fase 2 – Intermediário (semanas 5-8):
-(lista numerada)
-Fase 3 – Avançado (a partir da semana 9):
-(lista numerada)
+OBJETIVOS TERAPÊUTICOS:
+(lista numerada com cada objetivo em item separado)
 
-FREQUÊNCIA SEMANAL E DURAÇÃO:
-(texto direto: número de sessões, duração, prazo de reavaliação)
+EXERCÍCIOS RECOMENDADOS:
+Fase 1 – Inicial:
+(lista numerada; cada exercício numerado deve trazer, logo abaixo, subitens com hífen listando os exercícios específicos do Pilates indicados para aquele item)
+Fase 2 – Intermediário:
+(mesmo formato: lista numerada com subitens de exercícios específicos do Pilates)
+Fase 3 – Avançado:
+(mesmo formato: lista numerada com subitens de exercícios específicos do Pilates)
 
 PONTOS DE ATENÇÃO E CONTRAINDICAÇÕES:
 (lista com hífen, um ponto por linha)
 
-PRIORIDADES PARA AS PRIMEIRAS SESSÕES:
-(lista numerada, do mais urgente ao menos urgente)
+ORIENTAÇÕES:
+(texto direto com recomendações gerais para a paciente: frequência semanal sugerida, cuidados na execução, prazo de reavaliação)
 
 Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante estiver ausente, indique que a análise fica prejudicada. Não invente achados. Responda em português.`;
 
@@ -898,11 +896,7 @@ async function exportarPDF() {
   const nome    = (document.getElementById('nomeCompleto')?.value || '').trim();
   const dataVal = document.getElementById('footerData')?.value || '';
 
-  const nomeSlug = (nome || 'paciente')
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  const nomeSlug = _slugify(nome, 'paciente');
 
   const dataSlug = dataVal
     ? dataVal.split('-').reverse().join('-')
@@ -2044,7 +2038,10 @@ function restaurarRascunho() {
   if (!raw) return;
   let d;
   try { d = JSON.parse(raw); } catch { return; }
+  _aplicarDadosAoFormulario(d);
+}
 
+function _aplicarDadosAoFormulario(d) {
   _FIELD_IDS.forEach(id => {
     if (d[id] == null) return;
     const el = document.getElementById(id);
@@ -2142,7 +2139,367 @@ function restaurarRascunho() {
 function limparRascunho() {
   if (!confirm('Limpar todos os dados e começar uma avaliação nova?')) return;
   localStorage.removeItem(DRAFT_KEY);
+  localStorage.removeItem(REAVAL_KEY);
+  localStorage.removeItem(REAVAL_PENDING_KEY);
   location.reload();
+}
+
+// ── Avaliações salvas (múltiplas avaliações, sem fotos) ────────
+function _slugify(str, fallback = '') {
+  const base = (str || '').toString().trim() || fallback;
+  return base
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function _escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const AVAL_PREFIX = 'anga_avaliacao_';
+
+function _chaveAvaliacao(nome, data) {
+  return `${AVAL_PREFIX}${_slugify(nome, 'paciente')}_${_slugify(data, 'sem-data')}`;
+}
+
+function salvarAvaliacao() {
+  const nome = document.getElementById('nomeCompleto')?.value.trim();
+  const data = document.getElementById('footerData')?.value.trim();
+  if (!nome) { showToast('Informe o nome do paciente antes de salvar.'); return; }
+  if (!data) { showToast('Informe a data antes de salvar.'); return; }
+
+  const key = _chaveAvaliacao(nome, data);
+  if (localStorage.getItem(key)) {
+    const dataBr = data.split('-').reverse().join('/');
+    if (!confirm(`Já existe uma avaliação salva para ${nome} em ${dataBr}. Substituir?`)) return;
+  }
+
+  try {
+    const payload = _coletarRascunho(false);
+    payload._savedAt = Date.now();
+    localStorage.setItem(key, JSON.stringify(payload));
+    showToast('Avaliação salva com sucesso!');
+    if (document.getElementById('modalAvaliacoes')?.style.display !== 'none') _renderListaAvaliacoes();
+  } catch (e) {
+    showToast('Erro ao salvar avaliação: ' + e.message);
+  }
+}
+
+function _listarAvaliacoesSalvas() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(AVAL_PREFIX)) continue;
+    try {
+      const d = JSON.parse(localStorage.getItem(key));
+      out.push({
+        key,
+        nome: d.nomeCompleto || '(sem nome)',
+        data: d.footerData || d.dataAvaliacao || '',
+        savedAt: d._savedAt || 0,
+      });
+    } catch {}
+  }
+  out.sort((a, b) => b.savedAt - a.savedAt);
+  return out;
+}
+
+function _renderListaAvaliacoes() {
+  const wrap = document.getElementById('listaAvaliacoesSalvas');
+  if (!wrap) return;
+  const avals = _listarAvaliacoesSalvas();
+  if (!avals.length) {
+    wrap.innerHTML = '<p class="aval-empty">Nenhuma avaliação salva ainda.</p>';
+    return;
+  }
+  wrap.innerHTML = avals.map(a => {
+    const dataBr = a.data ? a.data.split('-').reverse().join('/') : '—';
+    return `
+      <div class="aval-item">
+        <div class="aval-item-info">
+          <span class="aval-item-nome">${_escapeHTML(a.nome)}</span>
+          <span class="aval-item-data">${dataBr}</span>
+        </div>
+        <div class="aval-item-actions">
+          <button type="button" class="btn-aval-abrir" onclick="abrirAvaliacaoSalva('${a.key}')">Abrir</button>
+          <button type="button" class="btn-aval-reavaliar" onclick="iniciarReavaliacao('${a.key}')">Iniciar reavaliação</button>
+          <button type="button" class="btn-aval-excluir" onclick="excluirAvaliacaoSalva('${a.key}')">Excluir</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function abrirGerenciadorAvaliacoes() {
+  _renderListaAvaliacoes();
+  document.getElementById('modalAvaliacoes').style.display = 'flex';
+}
+
+function fecharGerenciadorAvaliacoes() {
+  document.getElementById('modalAvaliacoes').style.display = 'none';
+}
+
+function abrirAvaliacaoSalva(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) { showToast('Avaliação não encontrada.'); return; }
+  if (!confirm('Abrir esta avaliação vai substituir os dados atuais no formulário. Continuar?')) return;
+  localStorage.setItem(DRAFT_KEY, raw);
+  localStorage.removeItem(REAVAL_KEY);
+  localStorage.removeItem(REAVAL_PENDING_KEY);
+  location.reload();
+}
+
+function iniciarReavaliacao(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) { showToast('Avaliação não encontrada.'); return; }
+  if (!confirm('Iniciar reavaliação: a Anamnese será mantida e bloqueada, as demais seções ficam em branco (com a avaliação anterior visível como referência) e a data é limpa para hoje. Isso substitui os dados atuais no formulário. Continuar?')) return;
+  localStorage.setItem(DRAFT_KEY, raw);
+  localStorage.setItem(REAVAL_PENDING_KEY, '1');
+  location.reload();
+}
+
+function excluirAvaliacaoSalva(key) {
+  if (!confirm('Excluir esta avaliação salva? Essa ação não pode ser desfeita.')) return;
+  localStorage.removeItem(key);
+  _renderListaAvaliacoes();
+  showToast('Avaliação excluída.');
+}
+
+// ── Backup: exportar / importar avaliações salvas ───────────────
+function exportarBackupAvaliacoes() {
+  const avaliacoes = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(AVAL_PREFIX)) continue;
+    try { avaliacoes[key] = JSON.parse(localStorage.getItem(key)); } catch {}
+  }
+  const total = Object.keys(avaliacoes).length;
+  if (!total) { showToast('Nenhuma avaliação salva para exportar.'); return; }
+
+  const backup = {
+    app: 'anga-avaliacao',
+    tipo: 'backup-avaliacoes',
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    total,
+    avaliacoes,
+  };
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `anga-backup-avaliacoes-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast(`Backup exportado com ${total} avaliação(ões).`);
+}
+
+function importarBackupAvaliacoes(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let backup;
+    try { backup = JSON.parse(ev.target.result); } catch { showToast('Arquivo inválido: não é um JSON válido.'); input.value = ''; return; }
+
+    if (!backup || backup.tipo !== 'backup-avaliacoes' || !backup.avaliacoes || typeof backup.avaliacoes !== 'object') {
+      showToast('Arquivo inválido: não é um backup de avaliações do Angá.');
+      input.value = '';
+      return;
+    }
+
+    const entradas = Object.entries(backup.avaliacoes).filter(([key]) => key.startsWith(AVAL_PREFIX));
+    if (!entradas.length) { showToast('O backup não contém avaliações válidas.'); input.value = ''; return; }
+
+    const existentes = entradas.filter(([key]) => localStorage.getItem(key) != null).length;
+    const msg = existentes
+      ? `Importar ${entradas.length} avaliação(ões)? ${existentes} já existem e serão substituídas.`
+      : `Importar ${entradas.length} avaliação(ões)?`;
+    if (!confirm(msg)) { input.value = ''; return; }
+
+    let importadas = 0;
+    entradas.forEach(([key, value]) => {
+      try { localStorage.setItem(key, JSON.stringify(value)); importadas++; } catch {}
+    });
+
+    _renderListaAvaliacoes();
+    showToast(`${importadas} avaliação(ões) importada(s) com sucesso.`);
+    input.value = '';
+  };
+  reader.onerror = () => { showToast('Erro ao ler o arquivo.'); input.value = ''; };
+  reader.readAsText(file);
+}
+
+// ── Modo reavaliação (Anamnese bloqueada + referência por seção) ─
+const REAVAL_KEY = 'anga_reavaliacao_estado';
+const REAVAL_PENDING_KEY = 'anga_reavaliacao_pendente';
+const SECTION1_FIELD_IDS = [
+  'nomeCompleto', 'dataNascimento', 'ocupacao', 'fisioterapeuta', 'fisioterapeutaCrefito',
+  'objetivo', 'queixaPrincipal', 'hda', 'diagnostico', 'codigoCBDF', 'exames', 'app',
+  'outrosSintomas', 'medicamentos', 'avds', 'sono', 'alimentacao', 'outrosHabitos',
+];
+const FOOTER_CARRYOVER_IDS = ['footerFisio', 'footerCrefito', 'footerLocalizacao'];
+const REF_SECTION_KEYS = {
+  2: 'ANÁLISE DA DOR',
+  3: 'ANÁLISE POSTURAL',
+  4: 'CADEIAS MUSCULARES',
+  5: 'TESTES DE MOBILIDADE E ESTABILIDADE ARTICULAR',
+};
+
+// Divide o texto de coletarDadosAvaliacao() em blocos por cabeçalho "=== NOME ==="
+function _splitPorSecoes(texto) {
+  const map = {};
+  const matches = [...texto.matchAll(/=== (.+?) ===\n?/g)];
+  matches.forEach((m, i) => {
+    const start = m.index + m[0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : texto.length;
+    map[m[1]] = texto.slice(start, end).trim();
+  });
+  return map;
+}
+
+// Limpa as seções 2–6 (dor, postural, cadeias, testes, plano), mantendo Anamnese e rodapé (exceto data)
+function _limparCamposReavaliacao() {
+  _FIELD_IDS.forEach(id => {
+    if (SECTION1_FIELD_IDS.includes(id) || FOOTER_CARRYOVER_IDS.includes(id)) return;
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.toggle-btn.active').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.eva-btn.active').forEach(b => b.classList.remove('active'));
+  const evaDesc = document.getElementById('evaDesc');
+  if (evaDesc) evaDesc.textContent = '';
+  bodyDots.length = 0; bodyStrokes.length = 0; _bmRedraw();
+  document.querySelectorAll('.result-btn.active').forEach(b => b.classList.remove('active'));
+  Object.keys(testResults).forEach(k => delete testResults[k]);
+  document.getElementById('discinese-tipo-d')?.classList.add('hidden');
+  document.getElementById('discinese-tipo-e')?.classList.add('hidden');
+  _PHOTO_KEYS.forEach(k => {
+    delete photoData[k];
+    const preview = document.getElementById(`preview${k}`);
+    const placeholder = document.getElementById(`placeholder${k}`);
+    if (preview) { preview.src = ''; preview.classList.remove('visible'); preview.style.display = ''; }
+    if (placeholder) { placeholder.classList.remove('hidden'); placeholder.style.display = ''; }
+    const resultEl = document.getElementById(`result${k}`);
+    if (resultEl) { resultEl.innerHTML = ''; resultEl.className = 'ai-result visible'; }
+    document.getElementById(`resumirAnaliseBtn${k}`)?.remove();
+  });
+  storedPlanoHTML = '';
+  const planoEl = document.getElementById('planoTratamento');
+  if (planoEl) planoEl.innerHTML = '';
+  const wrapper = document.getElementById('planoResultWrapper');
+  if (wrapper) wrapper.style.display = 'none';
+  const visceralCard = document.getElementById('visceralCard');
+  if (visceralCard) visceralCard.style.display = 'none';
+}
+
+// Roda uma vez no load seguinte a "Iniciar reavaliação": extrai o texto de referência
+// (reaproveitando coletarDadosAvaliacao sobre o formulário recém-restaurado) e então
+// limpa as seções 2–6 para a nova avaliação.
+function _processarReavaliacaoPendente() {
+  if (localStorage.getItem(REAVAL_PENDING_KEY) !== '1') {
+    _aplicarModoReavaliacaoSalvo();
+    return;
+  }
+  localStorage.removeItem(REAVAL_PENDING_KEY);
+
+  const textoAnterior = coletarDadosAvaliacao();
+  const secoesRef = _splitPorSecoes(textoAnterior);
+  const refNome = (document.getElementById('nomeCompleto')?.value || '').trim();
+  const refPlanoHTML = document.getElementById('planoTratamento')?.innerHTML || '';
+
+  _limparCamposReavaliacao();
+  document.getElementById('footerData').value = '';
+
+  localStorage.setItem(REAVAL_KEY, JSON.stringify({
+    ativo: true,
+    refNome,
+    refTexto: {
+      dor:      secoesRef[REF_SECTION_KEYS[2]] || '',
+      postural: secoesRef[REF_SECTION_KEYS[3]] || '',
+      cadeias:  secoesRef[REF_SECTION_KEYS[4]] || '',
+      testes:   secoesRef[REF_SECTION_KEYS[5]] || '',
+    },
+    refPlanoHTML,
+  }));
+
+  salvarRascunho();
+  _aplicarModoReavaliacaoSalvo();
+  showToast('Reavaliação iniciada — Anamnese bloqueada, demais seções em branco com a avaliação anterior como referência.');
+}
+
+function _aplicarBloqueioAnamnese(bloqueada) {
+  const seg1 = document.querySelector('.progress-seg[data-section="1"]');
+  if (seg1) seg1.style.display = bloqueada ? 'none' : '';
+}
+
+function _renderBannersReavaliacao(estado) {
+  const textoMap = { 2: estado.refTexto?.dor, 3: estado.refTexto?.postural, 4: estado.refTexto?.cadeias, 5: estado.refTexto?.testes };
+  Object.entries(textoMap).forEach(([sec, texto]) => {
+    const el = document.getElementById(`refSection${sec}`);
+    if (!el) return;
+    if (!texto) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'block';
+    const titulo = 'Avaliação anterior' + (estado.refNome ? ' · ' + _escapeHTML(estado.refNome) : '');
+    el.innerHTML = `<div class="reavaliacao-ref-title">${titulo}</div><pre class="reavaliacao-ref-body">${_escapeHTML(texto)}</pre>`;
+  });
+
+  const el6 = document.getElementById('refSection6');
+  if (el6) {
+    if (!estado.refPlanoHTML) { el6.style.display = 'none'; el6.innerHTML = ''; }
+    else {
+      el6.style.display = 'block';
+      const titulo = 'Plano anterior' + (estado.refNome ? ' · ' + _escapeHTML(estado.refNome) : '');
+      el6.innerHTML = `<div class="reavaliacao-ref-title">${titulo}</div><div class="reavaliacao-ref-body">${estado.refPlanoHTML}</div>`;
+    }
+  }
+}
+
+function _mostrarIndicadorReavaliacao(estado) {
+  const el = document.getElementById('reavaliacaoIndicador');
+  if (!el) return;
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <span>Modo reavaliação${estado.refNome ? ' · referência: ' + _escapeHTML(estado.refNome) : ''} — Anamnese bloqueada (dados anteriores mantidos)</span>
+    <button type="button" class="btn-encerrar-reavaliacao" onclick="encerrarModoReavaliacao()">Encerrar reavaliação</button>
+  `;
+}
+
+function _aplicarModoReavaliacaoSalvo() {
+  const raw = localStorage.getItem(REAVAL_KEY);
+  if (!raw) { MIN_SECTION = 1; _aplicarBloqueioAnamnese(false); return; }
+  let estado;
+  try { estado = JSON.parse(raw); } catch { localStorage.removeItem(REAVAL_KEY); return; }
+  if (!estado?.ativo) return;
+
+  MIN_SECTION = 2;
+  _aplicarBloqueioAnamnese(true);
+  if (currentSection < MIN_SECTION) {
+    document.getElementById(`section${currentSection}`)?.classList.remove('active');
+    currentSection = MIN_SECTION;
+    if (currentSection > maxVisited) maxVisited = currentSection;
+    document.getElementById(`section${currentSection}`)?.classList.add('active');
+  }
+  _renderBannersReavaliacao(estado);
+  _mostrarIndicadorReavaliacao(estado);
+  updateNav();
+}
+
+function encerrarModoReavaliacao() {
+  if (!confirm('Encerrar o modo reavaliação? A seção de Anamnese volta a ficar disponível para edição.')) return;
+  localStorage.removeItem(REAVAL_KEY);
+  MIN_SECTION = 1;
+  _aplicarBloqueioAnamnese(false);
+  document.querySelectorAll('.reavaliacao-ref').forEach(el => { el.style.display = 'none'; el.innerHTML = ''; });
+  const ind = document.getElementById('reavaliacaoIndicador');
+  if (ind) { ind.style.display = 'none'; ind.innerHTML = ''; }
+  updateNav();
+  showToast('Modo reavaliação encerrado.');
 }
 
 let _saveTimer = null;
@@ -2161,6 +2518,7 @@ const _mm = String(_today.getMonth() + 1).padStart(2, '0');
 const _dd = String(_today.getDate()).padStart(2, '0');
 document.getElementById('footerData').value = `${_yyyy}-${_mm}-${_dd}`;
 restaurarRascunho();
+_processarReavaliacaoPendente();
 _atualizarBtnResumir();
 
 // ── Ativa campos de IA como editáveis desde o início ─────────

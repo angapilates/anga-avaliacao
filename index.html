@@ -9,9 +9,15 @@
 <body>
   <div class="app">
     <header class="app-header">
-      <div class="header-brand">Angá</div>
-      <div class="header-subtitle">AVALIACAO FISICA</div>
-      <button type="button" class="btn-nova-avaliacao" onclick="limparRascunho()">+ Nova avaliação</button>
+      <div class="header-brand-block">
+        <div class="header-brand">Angá</div>
+        <div class="header-subtitle">AVALIACAO FISICA</div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-header-action" onclick="abrirGerenciadorAvaliacoes()">Gerenciar avaliações</button>
+        <button type="button" class="btn-header-action" onclick="salvarAvaliacao()">Salvar avaliação</button>
+        <button type="button" class="btn-header-action" onclick="limparRascunho()">+ Nova avaliação</button>
+      </div>
     </header>
 
     <div class="progress-row">
@@ -25,6 +31,8 @@
       </nav>
       <span class="section-label" id="sectionLabel">Seção 1 de 6</span>
     </div>
+
+    <div id="reavaliacaoIndicador" style="display:none"></div>
 
     <div class="card">
       <!-- SEÇÃO 1: ANAMNESE -->
@@ -146,6 +154,7 @@
       <!-- SEÇÃO 2: ANÁLISE DA DOR -->
       <section class="form-section" id="section2">
         <h2>Análise da Dor</h2>
+        <div class="reavaliacao-ref" id="refSection2" style="display:none"></div>
 
         <div class="field-group">
           <label>Mapa corporal da dor</label>
@@ -249,6 +258,7 @@
       <!-- SEÇÃO 3: ANÁLISE POSTURAL ESTÁTICA -->
       <section class="form-section" id="section3">
         <h2>Análise Postural Estática</h2>
+        <div class="reavaliacao-ref" id="refSection3" style="display:none"></div>
         <p class="section-description">Adicione fotos do paciente para análise postural com IA.</p>
 
         <div class="photo-grid">
@@ -330,6 +340,7 @@
       <!-- SEÇÃO 4: CADEIAS MUSCULARES -->
       <section class="form-section" id="section4">
         <h2>Análise das Cadeias Musculares</h2>
+        <div class="reavaliacao-ref" id="refSection4" style="display:none"></div>
         <p class="section-description">Avaliação baseada nas metodologias de Busquet e Myers.</p>
 
         <div class="photo-grid">
@@ -457,6 +468,7 @@
       <!-- SEÇÃO 5: TESTES DE MOBILIDADE E ESTABILIDADE ARTICULAR -->
       <section class="form-section" id="section5">
         <h2>Testes de Mobilidade e Estabilidade Articular</h2>
+        <div class="reavaliacao-ref" id="refSection5" style="display:none"></div>
 
         <!-- ── OMBRO ─────────────────────────────────────── -->
         <h3>Ombro</h3>
@@ -707,6 +719,7 @@
       <!-- SEÇÃO 6: PLANO DE TRATAMENTO -->
       <section class="form-section" id="section6">
         <h2>Plano de Tratamento</h2>
+        <div class="reavaliacao-ref" id="refSection6" style="display:none"></div>
         <p class="section-description">Gere um plano de tratamento personalizado consolidando todos os achados da avaliação. Edite livremente o texto sugerido antes de finalizar.</p>
 
 
@@ -767,6 +780,21 @@
     <div class="nav-buttons">
       <button type="button" class="btn-nav btn-back" id="btnBack" onclick="navigate(-1)">← Voltar</button>
       <button type="button" class="btn-nav btn-next" id="btnNext" onclick="navigate(1)">Próximo →</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalAvaliacoes" onclick="if(event.target===this) fecharGerenciadorAvaliacoes()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Avaliações salvas</h3>
+        <button type="button" class="modal-close" onclick="fecharGerenciadorAvaliacoes()" aria-label="Fechar">×</button>
+      </div>
+      <div class="modal-toolbar">
+        <button type="button" class="btn-backup" onclick="exportarBackupAvaliacoes()">Exportar backup</button>
+        <button type="button" class="btn-backup" onclick="document.getElementById('inputImportarBackup').click()">Importar backup</button>
+        <input type="file" id="inputImportarBackup" accept=".json,application/json" hidden onchange="importarBackupAvaliacoes(this)" />
+      </div>
+      <div class="modal-body" id="listaAvaliacoesSalvas"></div>
     </div>
   </div>
 
