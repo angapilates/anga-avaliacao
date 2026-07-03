@@ -270,6 +270,23 @@
           </div>
 
           <div class="photo-card">
+            <div class="photo-label">Vista Posterior</div>
+            <div class="photo-area" id="photoPosterior">
+              <img class="photo-preview" id="previewPosterior" src="" alt="" />
+              <div class="photo-placeholder" id="placeholderPosterior">
+                <span class="photo-icon">📷</span>
+                <span>Adicionar foto</span>
+              </div>
+            </div>
+            <input type="file" accept="image/*,.heic,.heif" id="inputPosterior" hidden onchange="handlePhoto(this, 'Posterior')" />
+            <div class="photo-actions">
+              <button type="button" class="btn-secondary" onclick="document.getElementById('inputPosterior').click()">Adicionar foto</button>
+              <button type="button" class="btn-ai" onclick="analisarFoto('Posterior')">Analisar com IA</button>
+            </div>
+            <div class="ai-result" id="resultPosterior"></div>
+          </div>
+
+          <div class="photo-card">
             <div class="photo-label">Vista Lateral Direita</div>
             <div class="photo-area" id="photoLateralD">
               <img class="photo-preview" id="previewLateralD" src="" alt="" />
@@ -301,23 +318,6 @@
               <button type="button" class="btn-ai" onclick="analisarFoto('LateralE')">Analisar com IA</button>
             </div>
             <div class="ai-result" id="resultLateralE"></div>
-          </div>
-
-          <div class="photo-card">
-            <div class="photo-label">Vista Posterior</div>
-            <div class="photo-area" id="photoPosterior">
-              <img class="photo-preview" id="previewPosterior" src="" alt="" />
-              <div class="photo-placeholder" id="placeholderPosterior">
-                <span class="photo-icon">📷</span>
-                <span>Adicionar foto</span>
-              </div>
-            </div>
-            <input type="file" accept="image/*,.heic,.heif" id="inputPosterior" hidden onchange="handlePhoto(this, 'Posterior')" />
-            <div class="photo-actions">
-              <button type="button" class="btn-secondary" onclick="document.getElementById('inputPosterior').click()">Adicionar foto</button>
-              <button type="button" class="btn-ai" onclick="analisarFoto('Posterior')">Analisar com IA</button>
-            </div>
-            <div class="ai-result" id="resultPosterior"></div>
           </div>
         </div>
 

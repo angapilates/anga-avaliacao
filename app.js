@@ -1635,9 +1635,9 @@ async function exportarPDF() {
 
     const posturalViews = [
       { key: 'Anterior',  label: 'Vista Anterior' },
+      { key: 'Posterior', label: 'Vista Posterior' },
       { key: 'LateralD',  label: 'Vista Lateral Direita' },
       { key: 'LateralE',  label: 'Vista Lateral Esquerda' },
-      { key: 'Posterior', label: 'Vista Posterior' },
     ];
     for (let i = 0; i < posturalViews.length; i += 2) {
       const l = posturalViews[i], r = posturalViews[i + 1];
