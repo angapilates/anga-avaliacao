@@ -27,9 +27,10 @@
         <button class="progress-seg" data-section="3" onclick="goToSection(3)" title="3 · Análise Postural"></button>
         <button class="progress-seg" data-section="4" onclick="goToSection(4)" title="4 · Cadeias Musculares"></button>
         <button class="progress-seg" data-section="5" onclick="goToSection(5)" title="5 · Mobilidade e Estabilidade"></button>
-        <button class="progress-seg" data-section="6" onclick="goToSection(6)" title="6 · Plano de Tratamento"></button>
+        <button class="progress-seg" data-section="6" onclick="goToSection(6)" title="6 · Registros Complementares"></button>
+        <button class="progress-seg" data-section="7" onclick="goToSection(7)" title="7 · Plano de Tratamento"></button>
       </nav>
-      <span class="section-label" id="sectionLabel">Seção 1 de 6</span>
+      <span class="section-label" id="sectionLabel">Seção 1 de 7</span>
     </div>
 
     <div id="reavaliacaoIndicador" style="display:none"></div>
@@ -716,10 +717,21 @@
 
       </section>
 
-      <!-- SEÇÃO 6: PLANO DE TRATAMENTO -->
+      <!-- SEÇÃO 6: REGISTROS COMPLEMENTARES -->
       <section class="form-section" id="section6">
-        <h2>Plano de Tratamento</h2>
+        <h2>Registros Complementares</h2>
         <div class="reavaliacao-ref" id="refSection6" style="display:none"></div>
+        <p class="section-description">Adicione fotos de testes ou observações complementares (ex: Teste de Apley, Teste de Thomas, Step Down), com nome e análise individual por IA.</p>
+
+        <div id="listaRegistrosComplementares" class="reg-lista"></div>
+
+        <button type="button" class="btn-add-registro" onclick="adicionarRegistroComplementar()">+ Adicionar registro complementar</button>
+      </section>
+
+      <!-- SEÇÃO 7: PLANO DE TRATAMENTO -->
+      <section class="form-section" id="section7">
+        <h2>Plano de Tratamento</h2>
+        <div class="reavaliacao-ref" id="refSection7" style="display:none"></div>
         <p class="section-description">Gere um plano de tratamento personalizado consolidando todos os achados da avaliação. Edite livremente o texto sugerido antes de finalizar.</p>
 
 
@@ -737,6 +749,21 @@
             <div id="planoTratamento" contenteditable="true" class="plano-textarea" data-placeholder="O plano aparecerá aqui após a geração…"></div>
           </div>
 
+        </div>
+
+        <div id="comparativoGenerateBox" class="plano-generate-box comparativo-generate-box" style="display:none; margin-top:1.5rem">
+          <button type="button" id="btnGerarComparativo" class="btn-gerar-plano btn-gerar-comparativo" onclick="gerarComparativoCompleto()">
+            Gerar comparativo completo
+          </button>
+          <p class="plano-hint">A IA compara dor, postura, cadeias musculares e testes entre a avaliação anterior e esta reavaliação.</p>
+        </div>
+
+        <div id="comparativoResultWrapper" style="display:none">
+          <div class="field-group" style="margin-top:1.25rem">
+            <label>Comparativo de evolução clínica</label>
+            <p class="plano-hint" style="margin:0.25rem 0 0.6rem">Revise e edite o texto antes de finalizar a avaliação.</p>
+            <div id="comparativoTexto" contenteditable="true" class="plano-textarea" data-placeholder="O comparativo aparecerá aqui após a geração…"></div>
+          </div>
         </div>
 
         <div class="field-group vedius-field">

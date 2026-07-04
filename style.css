@@ -796,6 +796,74 @@ textarea { resize: vertical; }
 .btn-confirm:hover { background: var(--accent-dark); }
 
 
+/* REGISTROS COMPLEMENTARES */
+.reg-lista {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 560px) {
+  .reg-lista { grid-template-columns: 1fr; }
+}
+.reg-card {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: #fafbfc;
+}
+.reg-nome-input {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  background: #fff;
+  font-family: inherit;
+}
+.reg-nome-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(194,86,9,0.12);
+}
+.btn-remover-registro {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid #dc2626;
+  border-radius: var(--radius);
+  background: #fff;
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-remover-registro:hover { background: #fef2f2; }
+.btn-add-registro {
+  display: block;
+  width: 100%;
+  padding: 0.85rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fafbfc;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  font-family: inherit;
+}
+.btn-add-registro:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
 /* MODO REAVALIAÇÃO */
 #reavaliacaoIndicador {
   display: none;
@@ -1049,6 +1117,12 @@ textarea { resize: vertical; }
 }
 .btn-gerar-plano:hover    { background: var(--accent-dark); }
 .btn-gerar-plano:disabled { opacity: 0.55; cursor: not-allowed; }
+.comparativo-generate-box {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+.btn-gerar-comparativo { background: #c2410c; }
+.btn-gerar-comparativo:hover { background: #9a3412; }
 .plano-hint {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -1265,7 +1339,8 @@ textarea { resize: vertical; }
   .header-actions,
   .modal-overlay,
   #reavaliacaoIndicador,
-  .reavaliacao-ref { display: none !important; }
+  .reavaliacao-ref,
+  .btn-add-registro { display: none !important; }
 
   /* Botões de seleção: mostrar só o ativo */
   .toggle-btn:not(.active),
