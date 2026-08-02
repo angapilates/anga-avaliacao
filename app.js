@@ -501,6 +501,9 @@ function buildLateralidadeBlock(vista) {
   if (vista.includes('Vista Lateral')) {
     return `<strong>Lateralidade (vista de perfil):</strong> não há inversão de lados. Use o lado já indicado no nome da vista.`;
   }
+  if (vista.includes('Flexão Lateral') || vista.includes('Rotação')) {
+    return `<strong>Lateralidade (${vista} — fotografia tirada de COSTAS para o paciente):</strong> NÃO há espelhamento nesta imagem. O lado DIREITO do paciente aparece do lado DIREITO do quadro, e o lado ESQUERDO do paciente aparece do lado ESQUERDO do quadro. NÃO aplique nenhuma inversão. Exemplo: uma tensão visível à direita do quadro está no lado DIREITO do paciente. Confira duas vezes antes de escrever cada achado lateralizado. O lado citado no nome do movimento refere-se à direção do movimento realizado, não ao lado fotografado.`;
+  }
   return `<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de FRENTE ou de COSTAS para o paciente. Se foi tirada de FRENTE, a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro e vice-versa. Se foi tirada de COSTAS, NÃO há espelhamento: o lado DIREITO do paciente aparece do lado DIREITO do quadro e o ESQUERDO do lado ESQUERDO. Raciocine sobre isso antes de nomear qualquer lado e confira duas vezes antes de escrever cada achado lateralizado.`;
 }
 
