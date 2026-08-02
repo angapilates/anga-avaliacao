@@ -491,6 +491,19 @@ function coletarContextoClinico() {
   return parts.join('\n');
 }
 
+function buildLateralidadeBlock(vista) {
+  if (vista.includes('Vista Anterior')) {
+    return `<strong>Lateralidade (Vista Anterior — fotografia tirada de FRENTE para o paciente):</strong> a imagem funciona como um espelho. O lado DIREITO do paciente aparece do lado ESQUERDO do quadro, e o lado ESQUERDO do paciente aparece do lado DIREITO do quadro. Aplique sempre essa inversão antes de nomear qualquer lado. Exemplo: um ombro mais elevado visto à esquerda do quadro é o ombro DIREITO do paciente. Confira a inversão duas vezes antes de escrever cada achado lateralizado.`;
+  }
+  if (vista.includes('Vista Posterior')) {
+    return `<strong>Lateralidade (Vista Posterior — fotografia tirada de COSTAS para o paciente):</strong> NÃO há espelhamento nesta vista. O lado DIREITO do paciente aparece do lado DIREITO do quadro, e o lado ESQUERDO do paciente aparece do lado ESQUERDO do quadro. NÃO aplique nenhuma inversão. Exemplo: uma escápula mais elevada vista à direita do quadro é a escápula DIREITA do paciente. Confira duas vezes antes de escrever cada achado lateralizado.`;
+  }
+  if (vista.includes('Vista Lateral')) {
+    return `<strong>Lateralidade (vista de perfil):</strong> não há inversão de lados. Use o lado já indicado no nome da vista.`;
+  }
+  return `<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de FRENTE ou de COSTAS para o paciente. Se foi tirada de FRENTE, a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro e vice-versa. Se foi tirada de COSTAS, NÃO há espelhamento: o lado DIREITO do paciente aparece do lado DIREITO do quadro e o ESQUERDO do lado ESQUERDO. Raciocine sobre isso antes de nomear qualquer lado e confira duas vezes antes de escrever cada achado lateralizado.`;
+}
+
 function buildPosturalPrompt(vista, ctx) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
@@ -501,7 +514,7 @@ function buildPosturalPrompt(vista, ctx) {
 
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
-<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de frente ou de costas para o paciente. Nessas duas orientações a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro, e o lado ESQUERDO do paciente aparece do lado DIREITO do quadro. Raciocine sobre essa inversão antes de nomear qualquer lado, e só então conclua qual é o lado direito e qual é o esquerdo do paciente. Em vistas de perfil (lateral direita/esquerda), não há inversão: use o lado já indicado no nome da vista.
+${buildLateralidadeBlock(vista)}
 
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
@@ -546,7 +559,7 @@ function buildChainPrompt(movimento, ctx, comparacao = null) {
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}${comparacaoBlock}
-<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de frente ou de costas para o paciente. Nessas duas orientações a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro, e o lado ESQUERDO do paciente aparece do lado DIREITO do quadro. Raciocine sobre essa inversão antes de nomear qualquer lado, e só então conclua qual é o lado direito e qual é o esquerdo do paciente.
+${buildLateralidadeBlock(movimento)}
 
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
