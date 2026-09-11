@@ -7,6 +7,9 @@ let maxVisited = 1;
 let MIN_SECTION = 1; // sobe para 2 em modo reavaliação (Anamnese bloqueada)
 let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
+// ── Marcação manual de lateralidade ('DE' = lado D do paciente à esquerda do quadro) ──
+const photoSide = {};
+const SIDE_MARK_KEYS = new Set(['Anterior','Posterior','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE']);
 const testResults = {};
 let registrosComplementares = []; // [{ id, nome, foto:{dataUrl,base64,mimeType}|null, analiseHTML }]
 let _regCounter = 0;
@@ -425,6 +428,77 @@ function resizeImageToBase64(dataUrl, maxDim, quality) {
   });
 }
 
+// ── Marcadores de lateralidade queimados na imagem enviada para a IA ──────
+// As faixas são desenhadas FORA da fotografia (a tela é alargada), então nada
+// do corpo do paciente fica coberto.
+function _desenharFaixasLaterais(ctx, totalW, h, band, side) {
+  const leftLetter  = side === 'DE' ? 'D' : 'E';
+  const rightLetter = side === 'DE' ? 'E' : 'D';
+  const cor = L => (L === 'D' ? '#1f9d55' : '#d92d20');
+  [[0, leftLetter], [totalW - band, rightLetter]].forEach(([x, letra]) => {
+    ctx.fillStyle = cor(letra);
+    ctx.fillRect(x, 0, band, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.round(band * 0.66)}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    [0.16, 0.5, 0.84].forEach(f => ctx.fillText(letra, x + band / 2, h * f));
+  });
+}
+
+function resizeImageToBase64ComMarcador(dataUrl, side, maxDim, quality) {
+  if (!side) return resizeImageToBase64(dataUrl, maxDim, quality);
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const band = Math.max(48, Math.round(w * 0.16));
+      const canvas = document.createElement('canvas');
+      canvas.width = w + band * 2;
+      canvas.height = h;
+      const c = canvas.getContext('2d');
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, canvas.width, canvas.height);
+      c.drawImage(img, band, 0, w, h);
+      _desenharFaixasLaterais(c, canvas.width, h, band, side);
+      const out = canvas.toDataURL('image/jpeg', quality);
+      resolve({ dataUrl: out, base64: out.split(',')[1], mimeType: 'image/jpeg' });
+    };
+    img.onerror = () => resolve(resizeImageToBase64(dataUrl, maxDim, quality));
+    img.src = dataUrl;
+  });
+}
+
+// ── Botões de marcação na tela ────────────────────────────────────────────
+function setPhotoSide(key, side) {
+  photoSide[key] = (photoSide[key] === side) ? undefined : side;
+  if (!photoSide[key]) delete photoSide[key];
+  _renderPhotoSide(key);
+  salvarRascunho();
+}
+
+function _renderPhotoSide(key) {
+  const side = photoSide[key];
+  ['DE', 'ED'].forEach(s => {
+    const b = document.getElementById(`sideBtn${key}${s}`);
+    if (b) b.classList.toggle('active', side === s);
+  });
+  const marks = document.getElementById(`sideMarks${key}`);
+  if (!marks) return;
+  if (!side) { marks.hidden = true; return; }
+  marks.hidden = false;
+  const l = marks.querySelector('.side-mark.left');
+  const r = marks.querySelector('.side-mark.right');
+  const lL = side === 'DE' ? 'D' : 'E';
+  const rL = side === 'DE' ? 'E' : 'D';
+  if (l) { l.textContent = lL; l.className = `side-mark left ${lL === 'D' ? 'is-d' : 'is-e'}`; }
+  if (r) { r.textContent = rL; r.className = `side-mark right ${rL === 'D' ? 'is-d' : 'is-e'}`; }
+}
+
 function storePhoto(key, file) {
   const reader = new FileReader();
   reader.onload = async ev => {
@@ -510,7 +584,14 @@ function buildLateralidadeBlock(vista) {
   return `<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de FRENTE ou de COSTAS para o paciente. Se foi tirada de FRENTE, a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro e vice-versa. Se foi tirada de COSTAS, NÃO há espelhamento: o lado DIREITO do paciente aparece do lado DIREITO do quadro e o ESQUERDO do lado ESQUERDO. Raciocine sobre isso antes de nomear qualquer lado e confira duas vezes antes de escrever cada achado lateralizado.`;
 }
 
-function buildPosturalPrompt(vista, ctx) {
+function buildMarcadorBlock(key) {
+  const extra = (key.startsWith('FlexaoLat') || key.startsWith('Rotacao'))
+    ? ' O lado citado no nome do movimento refere-se à direção do movimento realizado, não ao lado fotografado.'
+    : '';
+  return `<strong>Lateralidade (marcação manual feita pela fisioterapeuta):</strong> esta imagem tem duas faixas coloridas acrescentadas nas bordas, fora da fotografia. A faixa VERDE com a letra <strong>D</strong> marca o lado DIREITO do paciente e a faixa VERMELHA com a letra <strong>E</strong> marca o lado ESQUERDO do paciente. Essa marcação é a única fonte de verdade sobre lateralidade: use exclusivamente ela. NÃO raciocine sobre espelhamento, sobre a foto ter sido tirada de frente ou de costas, nem sobre o nome da vista para decidir o lado. Antes de escrever cada achado lateralizado, verifique de qual faixa aquela estrutura está mais próxima e nomeie o lado de acordo. As faixas não fazem parte do corpo do paciente e não devem ser descritas nem mencionadas na análise.${extra}`;
+}
+
+function buildPosturalPrompt(vista, ctx, marcador = null) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
     : '';
@@ -520,7 +601,7 @@ function buildPosturalPrompt(vista, ctx) {
 
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}
-${buildLateralidadeBlock(vista)}
+${marcador || buildLateralidadeBlock(vista)}
 
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
@@ -546,7 +627,7 @@ DIRETRIZES:
 Responda em português.`;
 }
 
-function buildChainPrompt(movimento, ctx, comparacao = null) {
+function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
     : '';
@@ -565,7 +646,7 @@ function buildChainPrompt(movimento, ctx, comparacao = null) {
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}${comparacaoBlock}
-${buildLateralidadeBlock(movimento)}
+${marcador || buildLateralidadeBlock(movimento)}
 
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
@@ -598,6 +679,12 @@ async function analisarFoto(key) {
     return;
   }
 
+  if (SIDE_MARK_KEYS.has(key) && !photoSide[key]) {
+    showToast('Marque qual lado da foto é o lado DIREITO do paciente antes de analisar.');
+    document.getElementById(`sideRow${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   const resultEl = document.getElementById(`result${key}`);
   const ctx    = coletarContextoClinico();
   const vista  = VIEW_LABELS[key] || key;
@@ -614,12 +701,17 @@ async function analisarFoto(key) {
     }
   }
 
-  const prompt = CHAIN_KEYS.has(key) ? buildChainPrompt(vista, ctx, comparacao) : buildPosturalPrompt(vista, ctx);
+  const marcador = SIDE_MARK_KEYS.has(key) ? buildMarcadorBlock(key) : null;
+  const prompt = CHAIN_KEYS.has(key)
+    ? buildChainPrompt(vista, ctx, comparacao, marcador)
+    : buildPosturalPrompt(vista, ctx, marcador);
 
   resultEl.className = 'ai-result visible loading';
   resultEl.textContent = 'Analisando com IA...';
 
-  const { base64, mimeType } = await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
+  const { base64, mimeType } = SIDE_MARK_KEYS.has(key)
+    ? await resizeImageToBase64ComMarcador(photoData[key].dataUrl, photoSide[key], 800, 0.6)
+    : await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
 
   try {
     const resp = await fetch('/api/ia', {
@@ -2368,6 +2460,7 @@ function _coletarRascunho(incluirFotos) {
   });
   d.eva = [...document.querySelectorAll('.eva-btn.active')].map(b => b.dataset.val);
   d.testResults = { ...testResults };
+  d.photoSides = { ...photoSide };
   d.bodyMarkers = bodyDots.map(d => ({ cx: d.x + '%', cy: d.y + '%' }));
   d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
   d.aiResults = {};
@@ -2496,6 +2589,12 @@ function _aplicarDadosAoFormulario(d) {
       foto: rc.foto ? { dataUrl: rc.foto.dataUrl, base64: rc.foto.dataUrl.split(',')[1], mimeType: rc.foto.mimeType } : null,
     }));
     _renderRegistrosComplementares();
+  }
+
+  if (d.photoSides) {
+    Object.entries(d.photoSides).forEach(([k, sd]) => {
+      if (sd) { photoSide[k] = sd; _renderPhotoSide(k); }
+    });
   }
 
   if (d.fotos) {
@@ -2762,6 +2861,8 @@ function _limparCamposReavaliacao() {
   document.getElementById('discinese-tipo-e')?.classList.add('hidden');
   _PHOTO_KEYS.forEach(k => {
     delete photoData[k];
+    delete photoSide[k];
+    _renderPhotoSide(k);
     const preview = document.getElementById(`preview${k}`);
     const placeholder = document.getElementById(`placeholder${k}`);
     if (preview) { preview.src = ''; preview.classList.remove('visible'); preview.style.display = ''; }

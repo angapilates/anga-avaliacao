@@ -267,9 +267,17 @@
             <div class="photo-label">Vista Anterior</div>
             <div class="photo-area" id="photoAnterior">
               <img class="photo-preview" id="previewAnterior" src="" alt="" />
+              <div class="side-marks" id="sideMarksAnterior" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderAnterior">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowAnterior">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnAnteriorDE" onclick="setPhotoSide('Anterior','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnAnteriorED" onclick="setPhotoSide('Anterior','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputAnterior" hidden onchange="handlePhoto(this, 'Anterior')" />
@@ -284,9 +292,17 @@
             <div class="photo-label">Vista Posterior</div>
             <div class="photo-area" id="photoPosterior">
               <img class="photo-preview" id="previewPosterior" src="" alt="" />
+              <div class="side-marks" id="sideMarksPosterior" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderPosterior">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowPosterior">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnPosteriorDE" onclick="setPhotoSide('Posterior','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnPosteriorED" onclick="setPhotoSide('Posterior','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputPosterior" hidden onchange="handlePhoto(this, 'Posterior')" />
@@ -385,9 +401,17 @@
             <div class="photo-label">Flexão Lateral D</div>
             <div class="photo-area">
               <img class="photo-preview" id="previewFlexaoLatD" src="" alt="" />
+              <div class="side-marks" id="sideMarksFlexaoLatD" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderFlexaoLatD">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowFlexaoLatD">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnFlexaoLatDDE" onclick="setPhotoSide('FlexaoLatD','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnFlexaoLatDED" onclick="setPhotoSide('FlexaoLatD','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputFlexaoLatD" hidden onchange="handlePhoto(this, 'FlexaoLatD')" />
@@ -402,9 +426,17 @@
             <div class="photo-label">Flexão Lateral E</div>
             <div class="photo-area">
               <img class="photo-preview" id="previewFlexaoLatE" src="" alt="" />
+              <div class="side-marks" id="sideMarksFlexaoLatE" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderFlexaoLatE">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowFlexaoLatE">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnFlexaoLatEDE" onclick="setPhotoSide('FlexaoLatE','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnFlexaoLatEED" onclick="setPhotoSide('FlexaoLatE','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputFlexaoLatE" hidden onchange="handlePhoto(this, 'FlexaoLatE')" />
@@ -419,9 +451,17 @@
             <div class="photo-label">Rotação Torácica D</div>
             <div class="photo-area">
               <img class="photo-preview" id="previewRotacaoD" src="" alt="" />
+              <div class="side-marks" id="sideMarksRotacaoD" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderRotacaoD">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowRotacaoD">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnRotacaoDDE" onclick="setPhotoSide('RotacaoD','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnRotacaoDED" onclick="setPhotoSide('RotacaoD','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputRotacaoD" hidden onchange="handlePhoto(this, 'RotacaoD')" />
@@ -436,9 +476,17 @@
             <div class="photo-label">Rotação Torácica E</div>
             <div class="photo-area">
               <img class="photo-preview" id="previewRotacaoE" src="" alt="" />
+              <div class="side-marks" id="sideMarksRotacaoE" hidden><span class="side-mark left"></span><span class="side-mark right"></span></div>
               <div class="photo-placeholder" id="placeholderRotacaoE">
                 <span class="photo-icon">📷</span>
                 <span>Adicionar foto</span>
+              </div>
+            </div>
+            <div class="side-mark-row" id="sideRowRotacaoE">
+              <span class="side-mark-hint">Lado direito do paciente está:</span>
+              <div class="side-mark-btns">
+                <button type="button" class="side-mark-btn" id="sideBtnRotacaoEDE" onclick="setPhotoSide('RotacaoE','DE')">◀ à esquerda da foto</button>
+                <button type="button" class="side-mark-btn" id="sideBtnRotacaoEED" onclick="setPhotoSide('RotacaoE','ED')">à direita da foto ▶</button>
               </div>
             </div>
             <input type="file" accept="image/*,.heic,.heif" id="inputRotacaoE" hidden onchange="handlePhoto(this, 'RotacaoE')" />
