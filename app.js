@@ -545,11 +545,54 @@ const VIEW_LABELS = {
 };
 const CHAIN_KEYS = new Set(['Flexao', 'Extensao', 'FlexaoLatD', 'FlexaoLatE', 'RotacaoD', 'RotacaoE']);
 const PAIR_MAP = {
+  LateralD:   'LateralE',
+  LateralE:   'LateralD',
   FlexaoLatD: 'FlexaoLatE',
   FlexaoLatE: 'FlexaoLatD',
   RotacaoD:   'RotacaoE',
   RotacaoE:   'RotacaoD',
 };
+
+// ── Limpeza de marcadores de markdown no texto devolvido pela IA ──────────
+// A IA as vezes devolve **negrito**, bullets com * ou - e titulos com #.
+// Aqui isso e convertido/removido antes de entrar na tela e no PDF.
+function limparMarkdown(texto) {
+  let t = String(texto || '');
+  t = t.replace(/\*\*\*([^*]+?)\*\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*([^*\n]+?)\*/g, '$1');
+  t = t.replace(/^[ \t]*#{1,6}[ \t]*/gm, '');
+  t = t.replace(/^[ \t]*[*+\u2022-][ \t]+/gm, '');
+  t = t.replace(/\*/g, '');
+  return t;
+}
+
+// ── Achados ja registrados em outras fotos desta mesma avaliacao ──────────
+const _ORDEM_VISTAS = ['Anterior','Posterior','LateralD','LateralE','Flexao','Extensao','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE'];
+
+function _achadosAnteriores(keyAtual, excluirKey) {
+  const partes = [];
+  _ORDEM_VISTAS.forEach(k => {
+    if (k === keyAtual || k === excluirKey) return;
+    const el = document.getElementById(`result${k}`);
+    if (!el || !el.classList.contains('visible')) return;
+    const txt = (el.innerText || '').trim();
+    if (!txt || txt.startsWith('Analisando') || txt.startsWith('Erro:')) return;
+    const lim = txt.length > 1200 ? txt.slice(0, 1200) + '\u2026' : txt;
+    partes.push(`[${VIEW_LABELS[k] || k}]\n${lim}`);
+  });
+  return partes;
+}
+
+function buildAchadosBlock(partes) {
+  if (!partes || !partes.length) return '';
+  return `\n<strong>ACHADOS J\u00c1 REGISTRADOS EM OUTRAS FOTOS DESTA MESMA AVALIA\u00c7\u00c3O:</strong>\n${partes.join('\n\n')}\n`;
+}
+
+function buildNaoRepetirBlock(partes) {
+  if (!partes || !partes.length) return '';
+  return `\n<strong>REGRA DE N\u00c3O REPETI\u00c7\u00c3O (tem prioridade sobre as demais diretrizes):</strong> os achados listados acima j\u00e1 constam no laudo desta avalia\u00e7\u00e3o. N\u00c3O os descreva de novo nesta vista, nem reescritos com outras palavras. Escreva apenas o que \u00e9 novo nesta imagem. \u00danica exce\u00e7\u00e3o: voc\u00ea pode retomar um achado anterior quando ele for necess\u00e1rio para sustentar ou correlacionar um achado NOVO desta vista (por exemplo, relacionar uma eleva\u00e7\u00e3o de ombro j\u00e1 descrita na vista anterior com uma altera\u00e7\u00e3o de apoio plantar vis\u00edvel agora). Nesse caso, cite o achado anterior em no m\u00e1ximo meia linha, apenas como refer\u00eancia, e desenvolva o achado novo. Se esta imagem n\u00e3o trouxer nenhum achado novo relevante, diga isso em uma ou duas frases objetivas em vez de repetir o que j\u00e1 foi descrito.\n`;
+}
 
 function coletarContextoClinico() {
   const v = id => (document.getElementById(id)?.value || '').trim();
@@ -591,18 +634,26 @@ function buildMarcadorBlock(key) {
   return `<strong>Lateralidade (marcação manual feita pela fisioterapeuta):</strong> esta imagem tem duas faixas coloridas acrescentadas nas bordas, fora da fotografia. A faixa VERDE com a letra <strong>D</strong> marca o lado DIREITO do paciente e a faixa VERMELHA com a letra <strong>E</strong> marca o lado ESQUERDO do paciente. Essa marcação é a única fonte de verdade sobre lateralidade: use exclusivamente ela. NÃO raciocine sobre espelhamento, sobre a foto ter sido tirada de frente ou de costas, nem sobre o nome da vista para decidir o lado. Antes de escrever cada achado lateralizado, verifique de qual faixa aquela estrutura está mais próxima e nomeie o lado de acordo. As faixas não fazem parte do corpo do paciente e não devem ser descritas nem mencionadas na análise.${extra}`;
 }
 
-function buildPosturalPrompt(vista, ctx, marcador = null) {
+function buildPosturalPrompt(vista, ctx, marcador = null, comparacao = null, anteriores = []) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
     : '';
   const dir3 = ctx
     ? 'Cruze explicitamente os dados clínicos fornecidos com os achados visuais: se o paciente relata dor em determinada região e há uma alteração postural correspondente visível, conecte os dois de forma fundamentada.'
     : 'Limite a análise ao que é efetivamente visível na imagem.';
+  const achadosBlock = buildAchadosBlock(anteriores);
+  const naoRepetir = buildNaoRepetirBlock(anteriores);
+  const comparacaoBlock = comparacao
+    ? `\n<strong>AN\u00c1LISE DA VISTA CONTRALATERAL DESTE PAR (j\u00e1 realizada \u2014 use somente para comparar; N\u00c3O repita os achados dela):</strong>\n${comparacao}\n`
+    : '';
+  const dirPar = comparacao
+    ? `\n<strong>SEGUNDA IMAGEM DO PAR:</strong> a vista contralateral deste par j\u00e1 foi analisada. O foco desta an\u00e1lise \u00e9 a COMPARA\u00c7\u00c3O. Descreva apenas o que difere do lado j\u00e1 analisado e o que \u00e9 espec\u00edfico deste lado. Se um achado se repete nos dois lados, registre isso em uma linha como padr\u00e3o bilateral, sem redescrev\u00ea-lo. Finalize com um par\u00e1grafo <strong>Compara\u00e7\u00e3o entre os lados</strong> apontando simetrias, assimetrias e o que o padr\u00e3o bilateral sugere.\n`
+    : '';
 
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
-${ctxBlock}
+${ctxBlock}${comparacaoBlock}${achadosBlock}
 ${marcador || buildLateralidadeBlock(vista)}
-
+${naoRepetir}${dirPar}
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
 DIRETRIZES:
@@ -627,7 +678,7 @@ DIRETRIZES:
 Responda em português.`;
 }
 
-function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null) {
+function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null, anteriores = []) {
   const ctxBlock = ctx
     ? `\nDADOS CLÍNICOS DO PACIENTE (use apenas o que foi fornecido — nunca acrescente informações ausentes):\n${ctx}\n`
     : '';
@@ -635,8 +686,10 @@ function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null) {
     ? 'Cruze explicitamente os dados clínicos fornecidos com os achados visuais: se o paciente relata dor em determinada região e há tensão ou limitação correspondente visível, conecte os dois de forma fundamentada.'
     : 'Limite a análise ao que é efetivamente visível na imagem.';
   const dir3b = comparacao
-    ? ' Não repita achados já descritos na análise do lado contralateral acima: se um achado se repetir neste lado, mencione-o de forma breve apenas como reforço do padrão já identificado, sem redescrevê-lo, e priorize o que é complementar ou específico deste movimento.'
+    ? ' O movimento contralateral deste par já foi analisado, então o foco desta análise é a COMPARAÇÃO: descreva apenas o que difere do lado já analisado (amplitude, simetria, compensações, qualidade do movimento) e o que é específico deste lado. Se um achado se repete nos dois lados, registre isso em uma linha como padrão bilateral, sem redescrevê-lo.'
     : '';
+  const achadosBlock = buildAchadosBlock(anteriores);
+  const naoRepetir = buildNaoRepetirBlock(anteriores);
   const comparacaoBlock = comparacao
     ? `\n<strong>ANÁLISE DO MOVIMENTO CONTRALATERAL JÁ REALIZADA (use exclusivamente para comparação na diretriz 8; NÃO repita aqui os achados já descritos nela):</strong>\n${comparacao}\n`
     : '';
@@ -645,9 +698,9 @@ function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null) {
     : '';
 
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
-${ctxBlock}${comparacaoBlock}
+${ctxBlock}${comparacaoBlock}${achadosBlock}
 ${marcador || buildLateralidadeBlock(movimento)}
-
+${naoRepetir}
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
 DIRETRIZES:
@@ -702,9 +755,10 @@ async function analisarFoto(key) {
   }
 
   const marcador = SIDE_MARK_KEYS.has(key) ? buildMarcadorBlock(key) : null;
+  const anteriores = _achadosAnteriores(key, comparacao ? parKey : null);
   const prompt = CHAIN_KEYS.has(key)
-    ? buildChainPrompt(vista, ctx, comparacao, marcador)
-    : buildPosturalPrompt(vista, ctx, marcador);
+    ? buildChainPrompt(vista, ctx, comparacao, marcador, anteriores)
+    : buildPosturalPrompt(vista, ctx, marcador, comparacao, anteriores);
 
   resultEl.className = 'ai-result visible loading';
   resultEl.textContent = 'Analisando com IA...';
@@ -739,7 +793,7 @@ async function analisarFoto(key) {
     const text = data.content?.[0]?.text || 'Sem resposta.';
     resultEl.className = 'ai-result visible';
     resultEl.contentEditable = 'true';
-    resultEl.innerHTML = text.replace(/\n/g, '<br>');
+    resultEl.innerHTML = limparMarkdown(text).replace(/\n/g, '<br>');
     injectFormatBar(resultEl);
     salvarRascunho();
 
@@ -793,7 +847,7 @@ async function resumirAnalise(key) {
     if (!resumo) throw new Error('Sem resposta da IA');
 
     if (confirm('Substituir a análise pelo resumo?')) {
-      resultEl.innerHTML = resumo.replace(/\n/g, '<br>');
+      resultEl.innerHTML = limparMarkdown(resumo).replace(/\n/g, '<br>');
       salvarRascunho();
     }
   } catch (err) {
@@ -914,7 +968,7 @@ async function analisarRegistroComplementar(id) {
 
     const data = await resp.json();
     const text = data.content?.[0]?.text || 'Sem resposta.';
-    r.analiseHTML = text.replace(/\n/g, '<br>');
+    r.analiseHTML = limparMarkdown(text).replace(/\n/g, '<br>');
     _renderRegistrosComplementares();
     salvarRascunho();
   } catch (err) {
@@ -1147,7 +1201,7 @@ Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante esti
 
     const data = await resp.json();
     const planText = data.content?.[0]?.text || 'Sem resposta.';
-    storedPlanoHTML = ta.innerHTML = planText.replace(/\n/g, '<br>');
+    storedPlanoHTML = ta.innerHTML = limparMarkdown(planText).replace(/\n/g, '<br>');
     console.log('[gerarPlano] storedPlanoHTML definido, length:', storedPlanoHTML.length);
     injectFormatBar(ta);
     salvarRascunho();
@@ -1260,7 +1314,7 @@ async function gerarComparativoCompleto() {
 
     const data = await resp.json();
     const text = data.content?.[0]?.text || 'Sem resposta.';
-    storedComparativoHTML = ta.innerHTML = text.replace(/\n/g, '<br>');
+    storedComparativoHTML = ta.innerHTML = limparMarkdown(text).replace(/\n/g, '<br>');
     injectFormatBar(ta);
     salvarRascunho();
     wrapper.style.display = 'block';
