@@ -9,6 +9,8 @@ let localExercicio = null; // 'casa' | 'academia'
 const photoData = {};
 // ── Marcação manual de lateralidade ('DE' = lado D do paciente à esquerda do quadro) ──
 const photoSide = {};
+// Copia da analise tecnica guardada antes de ser substituida pela versao do paciente
+const analiseBackup = {};
 const SIDE_MARK_KEYS = new Set(['Anterior','Posterior','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE']);
 const testResults = {};
 let registrosComplementares = []; // [{ id, nome, foto:{dataUrl,base64,mimeType}|null, analiseHTML }]
@@ -562,8 +564,18 @@ function limparMarkdown(texto) {
   t = t.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   t = t.replace(/\*([^*\n]+?)\*/g, '$1');
   t = t.replace(/^[ \t]*#{1,6}[ \t]*/gm, '');
-  t = t.replace(/^[ \t]*[*+\u2022-][ \t]+/gm, '');
+  t = t.replace(/^[ \t]*[*+\u2022\-\u2014\u2013][ \t]+/gm, '');
   t = t.replace(/\*/g, '');
+  // Travessoes: entre numeros vira "a" (10 a 15 graus); nos demais casos vira virgula
+  t = t.replace(/(\d)[ \t]*[\u2014\u2013][ \t]*(\d)/g, '$1 a $2');
+  t = t.replace(/[ \t]*[\u2014\u2013][ \t]*/g, ', ');
+  t = t.replace(/[ \t]+-[ \t]+/g, ', ');
+  // Arruma pontuacao duplicada que a troca possa ter criado
+  t = t.replace(/,[ \t]*,+/g, ',');
+  t = t.replace(/([.;:!?])[ \t]*,[ \t]*/g, '$1 ');
+  t = t.replace(/[ \t]+,/g, ',');
+  t = t.replace(/,[ \t]*([.;:!?])/g, '$1');
+  t = t.replace(/,[ \t]*$/gm, '');
   return t;
 }
 
@@ -794,6 +806,8 @@ async function analisarFoto(key) {
     resultEl.className = 'ai-result visible';
     resultEl.contentEditable = 'true';
     resultEl.innerHTML = limparMarkdown(text).replace(/\n/g, '<br>');
+    delete analiseBackup[key];
+    document.getElementById(`desfazerResumoBtn${key}`)?.remove();
     injectFormatBar(resultEl);
     salvarRascunho();
 
@@ -804,7 +818,7 @@ async function analisarFoto(key) {
       resumirBtn.type = 'button';
       resumirBtn.id = `resumirAnaliseBtn${key}`;
       resumirBtn.className = 'btn-resumir-analise';
-      resumirBtn.textContent = 'Resumir análise';
+      resumirBtn.textContent = 'Versão para o paciente';
       resumirBtn.onclick = () => resumirAnalise(key);
       resultEl.parentNode.insertBefore(resumirBtn, resultEl.nextSibling);
     }
@@ -816,6 +830,33 @@ async function analisarFoto(key) {
   }
 }
 
+// ── Desfazer a substituicao pela versao do paciente ──────────────────────
+function _renderDesfazerBtn(key) {
+  const resumirBtn = document.getElementById(`resumirAnaliseBtn${key}`);
+  if (!resumirBtn) return;
+  let btn = document.getElementById(`desfazerResumoBtn${key}`);
+  if (!analiseBackup[key]) { if (btn) btn.remove(); return; }
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = `desfazerResumoBtn${key}`;
+    btn.className = 'btn-desfazer-resumo';
+    btn.onclick = () => desfazerResumo(key);
+    resumirBtn.parentNode.insertBefore(btn, resumirBtn.nextSibling);
+  }
+  btn.textContent = '\u21a9 Desfazer, voltar ao texto t\u00e9cnico';
+}
+
+function desfazerResumo(key) {
+  const resultEl = document.getElementById(`result${key}`);
+  if (!resultEl || !analiseBackup[key]) return;
+  resultEl.innerHTML = analiseBackup[key];
+  delete analiseBackup[key];
+  document.getElementById(`desfazerResumoBtn${key}`)?.remove();
+  salvarRascunho();
+  showToast('Texto t\u00e9cnico restaurado.');
+}
+
 async function resumirAnalise(key) {
   const resultEl = document.getElementById(`result${key}`);
   const texto = resultEl?.innerText?.trim();
@@ -823,7 +864,7 @@ async function resumirAnalise(key) {
 
   const btn = document.getElementById(`resumirAnaliseBtn${key}`);
   btn.disabled = true;
-  btn.textContent = 'Resumindo…';
+  btn.textContent = 'Gerando…';
 
   try {
     const resp = await fetch('/api/ia', {
@@ -832,7 +873,19 @@ async function resumirAnalise(key) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: 'Você é fisioterapeuta. Resuma a análise abaixo de forma objetiva, mantendo apenas os achados clinicamente mais relevantes e as sugestões de abordagem. Sem introduções. Direto ao ponto. Use <strong>...</strong> para negritos. Não use asteriscos.',
+        system: [
+          'Você é uma fisioterapeuta explicando o resultado da avaliação para o próprio paciente, que não tem nenhuma formação na área da saúde. Reescreva a análise recebida em linguagem simples, clara e acolhedora.',
+          'REGRAS:',
+          '1. Fale diretamente com o paciente, usando "você".',
+          '2. Troque os termos técnicos por explicações do dia a dia. Se um termo técnico for realmente necessário, explique logo em seguida, entre parênteses, em poucas palavras.',
+          '3. Não cite nomes de músculos, cadeias musculares, trilhos anatômicos, graus de amplitude nem jargão de biomecânica.',
+          '4. Mantenha apenas três coisas: o que foi observado no corpo dele, como isso pode estar aparecendo no dia a dia, e o que será trabalhado nas aulas para melhorar.',
+          '5. Tom tranquilizador e encorajador. Não alarme, não prometa resultado, não faça diagnóstico nem prognóstico.',
+          '6. Texto curto: no máximo três parágrafos corridos.',
+          '7. Comece direto pelo conteúdo, sem introduções do tipo "segue o resumo" ou "nesta análise".',
+          '8. Use apenas <strong>...</strong> para negritos. Não use asteriscos, hashtags, travessões, hífens como marcador nem listas com marcadores.',
+          '9. Responda em português do Brasil.'
+        ].join('\n'),
         messages: [{ role: 'user', content: texto }]
       })
     });
@@ -846,15 +899,17 @@ async function resumirAnalise(key) {
     const resumo = data.content?.[0]?.text || '';
     if (!resumo) throw new Error('Sem resposta da IA');
 
-    if (confirm('Substituir a análise pelo resumo?')) {
+    if (confirm('Substituir a análise técnica pela versão para o paciente?')) {
+      analiseBackup[key] = resultEl.innerHTML;
       resultEl.innerHTML = limparMarkdown(resumo).replace(/\n/g, '<br>');
+      _renderDesfazerBtn(key);
       salvarRascunho();
     }
   } catch (err) {
     showToast('Erro ao resumir: ' + err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Resumir análise';
+    btn.textContent = 'Versão para o paciente';
   }
 }
 
@@ -2515,6 +2570,7 @@ function _coletarRascunho(incluirFotos) {
   d.eva = [...document.querySelectorAll('.eva-btn.active')].map(b => b.dataset.val);
   d.testResults = { ...testResults };
   d.photoSides = { ...photoSide };
+  d.analiseBackups = { ...analiseBackup };
   d.bodyMarkers = bodyDots.map(d => ({ cx: d.x + '%', cy: d.y + '%' }));
   d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
   d.aiResults = {};
@@ -2604,6 +2660,10 @@ function _aplicarDadosAoFormulario(d) {
     requestAnimationFrame(() => { _bmResize(); _bmRedraw(); });
   }
 
+  if (d.analiseBackups) {
+    Object.entries(d.analiseBackups).forEach(([k, html]) => { if (html) analiseBackup[k] = html; });
+  }
+
   if (d.aiResults) {
     Object.entries(d.aiResults).forEach(([k, html]) => {
       const el = document.getElementById(`result${k}`);
@@ -2614,10 +2674,11 @@ function _aplicarDadosAoFormulario(d) {
         btn.type = 'button';
         btn.id = `resumirAnaliseBtn${k}`;
         btn.className = 'btn-resumir-analise';
-        btn.textContent = 'Resumir análise';
+        btn.textContent = 'Versão para o paciente';
         btn.onclick = () => resumirAnalise(k);
         el.parentNode.insertBefore(btn, el.nextSibling);
       }
+      _renderDesfazerBtn(k);
     });
   }
 
@@ -2916,6 +2977,8 @@ function _limparCamposReavaliacao() {
   _PHOTO_KEYS.forEach(k => {
     delete photoData[k];
     delete photoSide[k];
+    delete analiseBackup[k];
+    document.getElementById(`desfazerResumoBtn${k}`)?.remove();
     _renderPhotoSide(k);
     const preview = document.getElementById(`preview${k}`);
     const placeholder = document.getElementById(`placeholder${k}`);
