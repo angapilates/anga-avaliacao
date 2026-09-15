@@ -2401,6 +2401,124 @@ document.getElementById('exames').addEventListener('paste', function(e) {
   this.dispatchEvent(new Event('input'));
 });
 
+// ══ Objetivos gerais do planejamento (Observações posturais / cadeias) ══
+const OBJETIVOS_CFG = {
+  Postural: {
+    campo: 'obsPostural',
+    btn: 'btnObjetivosPostural',
+    vistas: ['Anterior', 'Posterior', 'LateralD', 'LateralE'],
+    origem: 'análise postural estática',
+  },
+  Cadeias: {
+    campo: 'obsCadeias',
+    btn: 'btnObjetivosCadeias',
+    vistas: ['Flexao', 'Extensao', 'FlexaoLatD', 'FlexaoLatE', 'RotacaoD', 'RotacaoE'],
+    origem: 'análise das cadeias musculares',
+  },
+};
+const objetivosBackup = {};
+
+function _textoDaSecao(cfg) {
+  const partes = [];
+  cfg.vistas.forEach(k => {
+    const el = document.getElementById(`result${k}`);
+    if (!el || !el.classList.contains('visible')) return;
+    const t = (el.innerText || '').trim();
+    if (!t || t.startsWith('Analisando') || t.startsWith('Erro:')) return;
+    partes.push(`[${VIEW_LABELS[k] || k}]\n${t}`);
+  });
+  const obs = (document.getElementById(cfg.campo)?.value || '').trim();
+  if (obs) partes.push(`[Observações da fisioterapeuta]\n${obs}`);
+  return partes.join('\n\n');
+}
+
+function _renderDesfazerObjetivos(secao) {
+  const btn = document.getElementById(`desfazerObjetivosBtn${secao}`);
+  if (!btn) return;
+  btn.style.display = objetivosBackup[secao] ? '' : 'none';
+}
+
+function desfazerObjetivos(secao) {
+  const cfg = OBJETIVOS_CFG[secao];
+  const ta = document.getElementById(cfg?.campo);
+  if (!ta || objetivosBackup[secao] === undefined) return;
+  ta.value = objetivosBackup[secao];
+  delete objetivosBackup[secao];
+  ta.dispatchEvent(new Event('input'));
+  _renderDesfazerObjetivos(secao);
+  salvarRascunho();
+  showToast('Texto anterior restaurado.');
+}
+
+async function gerarObjetivos(secao) {
+  const cfg = OBJETIVOS_CFG[secao];
+  if (!cfg) return;
+  const ta = document.getElementById(cfg.campo);
+  const btn = document.getElementById(cfg.btn);
+  const material = _textoDaSecao(cfg);
+
+  if (!material) {
+    showToast('Analise ao menos uma foto desta seção ou escreva uma observação antes de gerar os objetivos.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Gerando…';
+
+  try {
+    const resp = await fetch('/api/ia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: [
+          `Você é uma fisioterapeuta especialista em cadeias musculares e trilhos anatômicos, redigindo o campo de objetivos gerais do planejamento de uma avaliação clínica. Os achados abaixo vêm da ${cfg.origem}.`,
+          'Escreva os objetivos gerais que o planejamento das aulas deve perseguir para responder a esses achados.',
+          'REGRAS:',
+          '1. Baseie-se exclusivamente nos achados recebidos. Não invente achados nem acrescente informações ausentes.',
+          '2. NUNCA cite nomes de exercícios, séries, repetições, aparelhos, equipamentos, posições ou protocolos. Objetivo é o que se pretende alcançar, não como será executado. Esta regra tem prioridade sobre todas as outras.',
+          '3. Formule cada objetivo com verbo de intenção terapêutica (restabelecer, melhorar, reduzir, fortalecer, integrar, reeducar, ampliar, estabilizar), sempre ligado a um achado identificado.',
+          '4. Ordene do mais relevante para o menos relevante, começando pelos objetivos que respondem aos achados de maior repercussão funcional.',
+          '5. Registro de documento clínico: formal, objetivo, frases curtas. Não se dirija ao paciente e não use primeira pessoa.',
+          '6. Formato: um único parágrafo corrido, no máximo seis frases. Sem títulos, sem listas, sem marcadores e sem quebras de linha.',
+          '7. Texto puro, sem nenhuma marcação: não use asteriscos, hashtags, travessões, hífens como marcador nem etiquetas HTML.',
+          '8. Comece direto pelos objetivos, sem introduções do tipo "com base nos achados" ou "o planejamento terá".',
+          '9. Responda em português do Brasil.'
+        ].join('\n'),
+        messages: [{ role: 'user', content: material }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const bruto = data.content?.[0]?.text || '';
+    if (!bruto) throw new Error('Sem resposta da IA');
+
+    const objetivos = limparMarkdown(bruto)
+      .replace(/<[^>]+>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (confirm('Substituir o conteúdo da caixa de observações pelos objetivos gerados?')) {
+      objetivosBackup[secao] = ta.value;
+      ta.value = objetivos;
+      ta.dispatchEvent(new Event('input'));
+      _renderDesfazerObjetivos(secao);
+      salvarRascunho();
+    }
+  } catch (err) {
+    showToast('Erro ao gerar objetivos: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar objetivos';
+  }
+}
+
 async function resumirHda() {
   const ta = document.getElementById('hda');
   const texto = ta.value.trim();
@@ -2576,6 +2694,7 @@ function _coletarRascunho(incluirFotos) {
   d.testResults = { ...testResults };
   d.photoSides = { ...photoSide };
   d.analiseBackups = { ...analiseBackup };
+  d.objetivosBackups = { ...objetivosBackup };
   d.bodyMarkers = bodyDots.map(d => ({ cx: d.x + '%', cy: d.y + '%' }));
   d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
   d.aiResults = {};
@@ -2663,6 +2782,13 @@ function _aplicarDadosAoFormulario(d) {
   }
   if (bodyMapCanvas && (bodyDots.length || bodyStrokes.length)) {
     requestAnimationFrame(() => { _bmResize(); _bmRedraw(); });
+  }
+
+  if (d.objetivosBackups) {
+    Object.entries(d.objetivosBackups).forEach(([k, txt]) => {
+      if (txt !== undefined && txt !== null) objetivosBackup[k] = txt;
+    });
+    Object.keys(OBJETIVOS_CFG).forEach(_renderDesfazerObjetivos);
   }
 
   if (d.analiseBackups) {
@@ -3000,6 +3126,7 @@ function _limparCamposReavaliacao() {
   if (wrapper) wrapper.style.display = 'none';
   const visceralCard = document.getElementById('visceralCard');
   if (visceralCard) visceralCard.style.display = 'none';
+  Object.keys(OBJETIVOS_CFG).forEach(k => { delete objetivosBackup[k]; _renderDesfazerObjetivos(k); });
   registrosComplementares = [];
   _renderRegistrosComplementares();
 }

@@ -349,8 +349,14 @@
         </div>
 
         <div class="field-group" style="margin-top:1.5rem">
-          <label>Observações posturais gerais</label>
+          <div class="label-mic-row">
+            <label for="obsPostural">Observações posturais gerais</label>
+            <div class="hda-actions">
+              <button type="button" id="btnObjetivosPostural" class="btn-gerar-objetivos" title="Gerar os objetivos gerais do planejamento a partir dos achados desta seção" onclick="gerarObjetivos('Postural')">Gerar objetivos</button>
+            </div>
+          </div>
           <textarea id="obsPostural" rows="3" placeholder="Anotações sobre postura, assimetrias, compensações..."></textarea>
+          <button type="button" id="desfazerObjetivosBtnPostural" class="btn-desfazer-resumo" style="display:none" onclick="desfazerObjetivos('Postural')">↩ Desfazer, voltar ao texto anterior</button>
         </div>
       </section>
 
@@ -499,8 +505,14 @@
         </div>
 
         <div class="field-group">
-          <label>Observações das cadeias musculares</label>
+          <div class="label-mic-row">
+            <label for="obsCadeias">Observações das cadeias musculares</label>
+            <div class="hda-actions">
+              <button type="button" id="btnObjetivosCadeias" class="btn-gerar-objetivos" title="Gerar os objetivos gerais do planejamento a partir dos achados desta seção" onclick="gerarObjetivos('Cadeias')">Gerar objetivos</button>
+            </div>
+          </div>
           <textarea id="obsCadeias" rows="3" placeholder="Padrões de tensão, compensações, achados relevantes..."></textarea>
+          <button type="button" id="desfazerObjetivosBtnCadeias" class="btn-desfazer-resumo" style="display:none" onclick="desfazerObjetivos('Cadeias')">↩ Desfazer, voltar ao texto anterior</button>
         </div>
 
         <h3>Diafragma e Transverso do Abdômen</h3>
