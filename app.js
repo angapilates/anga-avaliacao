@@ -2521,6 +2521,28 @@ async function gerarObjetivos(secao) {
   }
 }
 
+// Instruções da IA para o botão "Resumir" da HDA
+const HDA_RESUMO_PROMPT = [
+  'Você é fisioterapeuta e vai redigir a HDA (história da doença atual) de um prontuário a partir do relato abaixo. O relato pode ser texto digitado ou a transcrição de uma conversa entre a fisioterapeuta e o paciente, com falas misturadas, repetições, hesitações e assuntos paralelos.',
+  'OBJETIVO: produzir um registro clínico enxuto com toda a cronologia da queixa, do início até hoje, contendo apenas o que é pertinente ao tratamento.',
+  'INCLUA, quando aparecerem no relato:',
+  '1. Sintomas: o que sente, onde, como é a sensação, intensidade, frequência, o que piora e o que alivia.',
+  '2. Início: quando começou a sentir ou quando sofreu o trauma, e como aconteceu (mecanismo, situação, atividade que fazia).',
+  '3. Como se sentiu na época e como os sintomas evoluíram ao longo do tempo (pioras, melhoras, crises, recidivas).',
+  '4. Quem procurou para ajudar ou diagnosticar (especialidade do profissional), exames realizados e diagnósticos recebidos.',
+  '5. Tratamentos indicados, tratamentos que de fato fez (incluindo medicamentos, cirurgias, fisioterapia e outras terapias), por quanto tempo e qual foi o resultado.',
+  '6. Como está hoje: sintomas atuais e limitações nas atividades do dia a dia, no trabalho, no sono ou no exercício.',
+  'EXCLUA: informações repetidas; conversa social e assuntos sem relação com a queixa; perguntas e comentários da fisioterapeuta (use só o que o paciente relata ou confirma); hesitações e vícios de fala; detalhes pessoais que não influenciam o tratamento.',
+  'REGRAS:',
+  'a) Use exclusivamente o que está no relato. Não invente, não deduza diagnósticos e não acrescente interpretações. Se um dado for vago no relato (por exemplo, data aproximada), registre-o como vago.',
+  'b) Organize em ordem cronológica, do início dos sintomas até o momento atual.',
+  'c) Escreva em terceira pessoa, no registro de prontuário (exemplo: "Paciente relata dor lombar desde 2022, após..."). Frases curtas e objetivas.',
+  'd) Formato: texto corrido em um ou mais parágrafos curtos, cada parágrafo cobrindo uma fase da história. Sem títulos, listas ou marcadores.',
+  'e) Texto puro, sem asteriscos, hashtags, travessões ou etiquetas HTML.',
+  'f) Comece direto pela história, sem introduções como "Resumo:" ou "Com base no relato".',
+  'g) Responda em português do Brasil.'
+].join('\n');
+
 async function resumirHda() {
   const ta = document.getElementById('hda');
   const texto = ta.value.trim();
@@ -2536,8 +2558,8 @@ async function resumirHda() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: 'Você é fisioterapeuta. Resuma o seguinte relato do paciente de forma clara e objetiva, mantendo apenas as informações clinicamente relevantes, em português. Sem introduções. Direto ao ponto.',
+        max_tokens: 2048,
+        system: HDA_RESUMO_PROMPT,
         messages: [{ role: 'user', content: texto }]
       })
     });
@@ -2548,8 +2570,12 @@ async function resumirHda() {
     }
 
     const data = await resp.json();
-    const resumo = data.content?.[0]?.text || '';
-    if (!resumo) throw new Error('Sem resposta da IA');
+    const bruto = data.content?.[0]?.text || '';
+    if (!bruto) throw new Error('Sem resposta da IA');
+    const resumo = limparMarkdown(bruto)
+      .replace(/<[^>]+>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
 
     if (confirm('Substituir o texto atual pelo resumo?')) {
       ta.value = resumo;
@@ -2563,88 +2589,179 @@ async function resumirHda() {
   }
 }
 
-// ── Transcrição de voz (HDA) ──────────────────────────────────
-let _hdaRec = null, _hdaWant = false;
+// ── Transcrição de áudio (HDA) ────────────────────────────────
+// A fisioterapeuta escolhe um áudio gravado no celular. O app manda o áudio
+// para o servidor, que repassa à Groq (Whisper) e devolve o texto.
+// Áudios pequenos em formato aceito vão inteiros. Os demais são convertidos
+// aqui no navegador e enviados em trechos de cerca de 2 minutos, cortados
+// num momento de silêncio para não partir palavras.
+const TRANSCRICAO_LIMITE_DIRETO = 4 * 1024 * 1024; // 4 MB
+const TRANSCRICAO_TRECHO_SEG = 120;
+const TRANSCRICAO_TAXA = 16000;
+const TRANSCRICAO_FORMATOS = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'];
 
-function toggleHdaVoz() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showToast('Reconhecimento de voz não suportado. Use Chrome ou Edge.'); return; }
-  if (location.protocol === 'file:') { showToast('Voz requer HTTP. Abra pelo Live Server ou use o deploy do Netlify.'); return; }
+async function transcreverAudioHda(input) {
+  const arquivo = input.files?.[0];
+  input.value = '';
+  if (!arquivo) return;
 
-  const btn = document.getElementById('btnMicHda');
+  const btn = document.getElementById('btnAudioHda');
+  const rotulo = btn.querySelector('span');
+  const rotuloOriginal = rotulo.textContent;
+  btn.disabled = true;
+  rotulo.textContent = 'Preparando…';
 
-  if (_hdaWant) {
-    _hdaWant = false;
-    _hdaRec?.abort();
-    btn.classList.remove('active');
-    return;
-  }
+  try {
+    let ext = (arquivo.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'opus' || ext === 'oga') ext = 'ogg';
 
-  const ta     = document.getElementById('hda');
-  const prefix = ta.value.trimEnd();
-  let acumulado = '';
-
-  _hdaWant = true;
-  btn.classList.add('active');
-
-  function rodada() {
-    if (!_hdaWant) return;
-
-    const rec = new SR();       // nova instância a cada rodada — obrigatório no Chrome
-    _hdaRec = rec;
-    rec.lang            = 'pt-BR';
-    rec.continuous      = false; // reiniciamos manualmente
-    rec.interimResults  = true;
-    rec.maxAlternatives = 1;
-
-    rec.onaudiostart = () => console.log('[voz] áudio capturado');
-    rec.onspeechstart = () => console.log('[voz] fala detectada');
-    rec.onspeechend   = () => console.log('[voz] fala encerrada');
-
-    rec.onresult = e => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) acumulado += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      ta.value = (prefix ? prefix + ' ' : '') + acumulado + interim;
-      ta.dispatchEvent(new Event('input'));
-    };
-
-    rec.onend = () => {
-      console.log('[voz] onend, _hdaWant=', _hdaWant);
-      if (_hdaWant) { setTimeout(rodada, 150); return; }
-      btn.classList.remove('active');
-      ta.value = ((prefix ? prefix + ' ' : '') + acumulado).trim();
-      ta.dispatchEvent(new Event('input'));
-    };
-
-    rec.onerror = e => {
-      console.log('[voz] onerror:', e.error);
-      if (e.error === 'aborted' || e.error === 'no-speech') return;
-      _hdaWant = false;
-      btn.classList.remove('active');
-      const msgs = {
-        'not-allowed':         'Permissão de microfone negada. Permita nas configurações do Chrome.',
-        'network':             'Erro de rede ao acessar o serviço de voz do Google.',
-        'service-not-allowed': 'Serviço de voz bloqueado pelo navegador.',
-        'audio-capture':       'Microfone não encontrado ou inacessível.',
-      };
-      showToast(msgs[e.error] || `Erro de voz: ${e.error}`);
-    };
-
-    try {
-      rec.start();
-      console.log('[voz] start() chamado');
-    } catch (err) {
-      console.error('[voz] erro no start():', err);
-      showToast('Erro ao iniciar: ' + err.message);
-      _hdaWant = false;
-      btn.classList.remove('active');
+    let partes;
+    if (arquivo.size <= TRANSCRICAO_LIMITE_DIRETO && TRANSCRICAO_FORMATOS.includes(ext)) {
+      partes = [{ blob: arquivo, nome: 'audio.' + ext }];
+    } else {
+      partes = await _dividirAudioEmTrechos(arquivo);
     }
+
+    const textos = [];
+    for (let i = 0; i < partes.length; i++) {
+      rotulo.textContent = partes.length > 1 ? `Transcrevendo ${i + 1}/${partes.length}…` : 'Transcrevendo…';
+      textos.push(await _transcreverTrecho(partes[i]));
+    }
+
+    const transcricao = _limparTranscricao(textos.join(' '));
+    if (!transcricao) throw new Error('Não foi possível identificar fala no áudio.');
+
+    const ta = document.getElementById('hda');
+    const atual = ta.value.trim();
+    ta.value = atual ? atual + '\n\n' + transcricao : transcricao;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    showToast('Transcrição incluída. Revise e clique em Resumir.');
+  } catch (err) {
+    console.error('[audio] erro:', err);
+    showToast('Erro na transcrição: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    rotulo.textContent = rotuloOriginal;
+  }
+}
+
+async function _transcreverTrecho(parte, tentativa = 1) {
+  const resp = await fetch('/api/transcrever', {
+    method: 'POST',
+    headers: {
+      'Content-Type': parte.blob.type || 'application/octet-stream',
+      'X-Nome-Arquivo': parte.nome,
+    },
+    body: parte.blob,
+  });
+
+  // Limite de uso por minuto da Groq: espera um pouco e tenta de novo
+  if (resp.status === 429 && tentativa <= 4) {
+    const espera = Math.min(Number(resp.headers.get('retry-after')) || 15, 60);
+    await new Promise(r => setTimeout(r, espera * 1000));
+    return _transcreverTrecho(parte, tentativa + 1);
+  }
+  if (resp.status === 413) throw new Error('Áudio grande demais para envio.');
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error?.message || `Erro ${resp.status}`);
+  return data.texto || '';
+}
+
+// Remove frases que o Whisper costuma "inventar" em trechos de silêncio
+function _limparTranscricao(texto) {
+  return String(texto || '')
+    .replace(/legendas? (pela|por) comunidade amara\.org/gi, '')
+    .replace(/(obrigad[oa] por assistir|inscreva-se no canal|legendado por [^.]*)[.!]?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function _dividirAudioEmTrechos(arquivo) {
+  const bytes = await arquivo.arrayBuffer();
+  let audio;
+  try {
+    let ctx;
+    try { ctx = new AudioContext({ sampleRate: TRANSCRICAO_TAXA }); }
+    catch { ctx = new AudioContext(); }
+    audio = await ctx.decodeAudioData(bytes);
+    ctx.close?.();
+  } catch {
+    throw new Error('Formato de áudio não reconhecido. Exporte o áudio como MP3 ou M4A e tente de novo.');
   }
 
-  rodada();
+  // Junta os canais num só (mono)
+  const len = audio.length;
+  let mono = new Float32Array(len);
+  for (let c = 0; c < audio.numberOfChannels; c++) {
+    const dados = audio.getChannelData(c);
+    for (let k = 0; k < len; k++) mono[k] += dados[k] / audio.numberOfChannels;
+  }
+  let taxa = audio.sampleRate;
+  if (taxa !== TRANSCRICAO_TAXA) { mono = _reamostrar(mono, taxa, TRANSCRICAO_TAXA); taxa = TRANSCRICAO_TAXA; }
+
+  const total = mono.length;
+  const tamanho = TRANSCRICAO_TRECHO_SEG * taxa;
+  const janela = Math.round(0.1 * taxa);
+  const busca = 15 * taxa;
+  const partes = [];
+  let ini = 0;
+  while (ini < total) {
+    let fim = Math.min(ini + tamanho, total);
+    if (fim < total) {
+      // Procura o ponto mais silencioso nos últimos 15 segundos do trecho
+      let melhor = fim, menor = Infinity;
+      for (let p = fim - busca; p + janela <= fim; p += janela) {
+        let soma = 0;
+        for (let k = p; k < p + janela; k++) soma += mono[k] * mono[k];
+        if (soma < menor) { menor = soma; melhor = p + Math.floor(janela / 2); }
+      }
+      fim = melhor;
+    }
+    if (fim - ini > taxa / 2) {
+      partes.push({ blob: _paraWav(mono.subarray(ini, fim), taxa), nome: `trecho${partes.length + 1}.wav` });
+    }
+    ini = fim;
+  }
+  if (!partes.length) throw new Error('O áudio está vazio.');
+  return partes;
+}
+
+function _reamostrar(dados, de, para) {
+  const razao = de / para;
+  const n = Math.floor(dados.length / razao);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const pos = i * razao;
+    const a = Math.floor(pos);
+    const b = Math.min(a + 1, dados.length - 1);
+    out[i] = dados[a] + (dados[b] - dados[a]) * (pos - a);
+  }
+  return out;
+}
+
+function _paraWav(amostras, taxa) {
+  const buffer = new ArrayBuffer(44 + amostras.length * 2);
+  const v = new DataView(buffer);
+  const escrever = (pos, txt) => { for (let i = 0; i < txt.length; i++) v.setUint8(pos + i, txt.charCodeAt(i)); };
+  escrever(0, 'RIFF');
+  v.setUint32(4, 36 + amostras.length * 2, true);
+  escrever(8, 'WAVE');
+  escrever(12, 'fmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, taxa, true);
+  v.setUint32(28, taxa * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  escrever(36, 'data');
+  v.setUint32(40, amostras.length * 2, true);
+  for (let i = 0; i < amostras.length; i++) {
+    const x = Math.max(-1, Math.min(1, amostras[i]));
+    v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
 }
 
 // ── Toast ─────────────────────────────────────────────────────
