@@ -434,17 +434,30 @@ function resizeImageToBase64(dataUrl, maxDim, quality) {
 // As faixas são desenhadas FORA da fotografia (a tela é alargada), então nada
 // do corpo do paciente fica coberto.
 function _desenharFaixasLaterais(ctx, totalW, h, band, side) {
-  const leftLetter  = side === 'DE' ? 'D' : 'E';
-  const rightLetter = side === 'DE' ? 'E' : 'D';
-  const cor = L => (L === 'D' ? '#1f9d55' : '#d92d20');
-  [[0, leftLetter], [totalW - band, rightLetter]].forEach(([x, letra]) => {
-    ctx.fillStyle = cor(letra);
+  // A faixa traz a palavra que deve ser usada no laudo, escrita por extenso e
+  // na vertical. As duas faixas têm a mesma cor neutra de propósito: assim não
+  // existe cor para a IA mencionar no texto, só a palavra.
+  const leftWord  = side === 'DE' ? 'DIREITO' : 'ESQUERDO';
+  const rightWord = side === 'DE' ? 'ESQUERDO' : 'DIREITO';
+  [[0, leftWord], [totalW - band, rightWord]].forEach(([x, palavra]) => {
+    ctx.fillStyle = '#1a1d23';
     ctx.fillRect(x, 0, band, h);
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${Math.round(band * 0.66)}px Arial, Helvetica, sans-serif`;
+    ctx.font = `bold ${Math.round(band * 0.42)}px Arial, Helvetica, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    [0.16, 0.5, 0.84].forEach(f => ctx.fillText(letra, x + band / 2, h * f));
+    // Mede a palavra e só repete quantas vezes couber sem sobrepor
+    const larguraTexto = ctx.measureText(palavra).width;
+    let vezes = Math.floor(h / (larguraTexto * 1.5));
+    vezes = Math.max(1, Math.min(3, vezes));
+    for (let i = 0; i < vezes; i++) {
+      const f = (i + 1) / (vezes + 1);
+      ctx.save();
+      ctx.translate(x + band / 2, h * f);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(palavra, 0, 0);
+      ctx.restore();
+    }
   });
 }
 
@@ -668,11 +681,19 @@ function buildLateralidadeBlock(vista) {
   return `<strong>Lateralidade:</strong> antes de descrever qualquer achado lateralizado, identifique explicitamente se esta fotografia foi tirada de FRENTE ou de COSTAS para o paciente. Se foi tirada de FRENTE, a imagem funciona como um espelho: o lado DIREITO do paciente aparece do lado ESQUERDO do quadro e vice-versa. Se foi tirada de COSTAS, NÃO há espelhamento: o lado DIREITO do paciente aparece do lado DIREITO do quadro e o ESQUERDO do lado ESQUERDO. Raciocine sobre isso antes de nomear qualquer lado e confira duas vezes antes de escrever cada achado lateralizado.`;
 }
 
+function buildRoupaBlock() {
+  return `<strong>Roupa não é referência anatômica:</strong> linhas de roupa não indicam altura, nivelamento nem simetria de nenhuma estrutura do corpo. É proibido usar como referência o cós, barras, costuras, estampas, listras, recortes, dobras do tecido, alças e qualquer borda de peça de roupa. Essas peças são cortadas de forma assimétrica de fábrica, se deslocam com o movimento e assentam de maneira diferente em cada corpo: uma linha de roupa inclinada não é sinal de desnível.
+
+<strong>O que você pode avaliar:</strong> estruturas com pele exposta, e estruturas cujo contorno do corpo seja claramente legível através do tecido (por exemplo o contorno dos joelhos, da panturrilha, do ombro ou da coxa sob roupa justa). Nesses casos, descreva o que o contorno do CORPO mostra, nunca o que o desenho do tecido sugere.
+
+<strong>O que você não pode avaliar:</strong> estrutura coberta por roupa e sem contorno corporal legível. Exemplo: crista ilíaca sob legging de cintura alta, escápula sob blusa folgada, coluna sob tecido grosso. Nesses casos, declare em uma frase curta que a estrutura não é avaliável nesta fotografia e NÃO produza achado sobre ela. Não a substitua por uma referência de roupa próxima e não deduza a posição dela a partir da roupa. Preferir não afirmar é melhor do que afirmar com base no tecido.`;
+}
+
 function buildMarcadorBlock(key) {
   const extra = (key.startsWith('FlexaoLat') || key.startsWith('Rotacao'))
     ? ' O lado citado no nome do movimento refere-se à direção do movimento realizado, não ao lado fotografado.'
     : '';
-  return `<strong>Lateralidade (marcação manual feita pela fisioterapeuta):</strong> esta imagem tem duas faixas coloridas acrescentadas nas bordas, fora da fotografia. A faixa VERDE com a letra <strong>D</strong> marca o lado DIREITO do paciente e a faixa VERMELHA com a letra <strong>E</strong> marca o lado ESQUERDO do paciente. Essa marcação é a única fonte de verdade sobre lateralidade: use exclusivamente ela. NÃO raciocine sobre espelhamento, sobre a foto ter sido tirada de frente ou de costas, nem sobre o nome da vista para decidir o lado. Antes de escrever cada achado lateralizado, verifique de qual faixa aquela estrutura está mais próxima e nomeie o lado de acordo. As faixas não fazem parte do corpo do paciente e não devem ser descritas nem mencionadas na análise.${extra}`;
+  return `<strong>Lateralidade (marcação manual feita pela fisioterapeuta):</strong> esta imagem tem uma faixa preta acrescentada em cada borda, fora da fotografia. Cada faixa traz escrita, na vertical, a palavra que você deve usar para as estruturas daquele lado: <strong>DIREITO</strong> em uma borda e <strong>ESQUERDO</strong> na outra. Leia as duas faixas antes de começar.\n\n<strong>Como nomear um lado:</strong> localize a estrutura na imagem, veja de qual das duas bordas ela está mais próxima, leia a palavra escrita naquela faixa e use exatamente essa palavra. É uma leitura, não uma dedução. NÃO raciocine sobre espelhamento, sobre a foto ter sido tirada de frente ou de costas, nem sobre o nome da vista: esses raciocínios são a causa conhecida de erro aqui e estão proibidos.\n\n<strong>Conferência obrigatória antes de entregar:</strong> releia em silêncio cada achado lateralizado que você escreveu e confirme, um por um, contra a borda correspondente. Se algum estiver trocado, corrija antes de responder. Não escreva essa conferência no texto.\n\n<strong>As faixas são um apoio técnico:</strong> não fazem parte do corpo do paciente e não podem ser descritas, mencionadas nem citadas por cor ou posição na análise. O laudo deve falar apenas em lado direito e lado esquerdo.${extra}`;
 }
 
 function buildPosturalPrompt(vista, ctx, marcador = null, comparacao = null, anteriores = []) {
@@ -694,6 +715,8 @@ function buildPosturalPrompt(vista, ctx, marcador = null, comparacao = null, ant
   return `Você é um fisioterapeuta especialista em análise postural. Analise esta fotografia — <strong>${vista}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}${comparacaoBlock}${achadosBlock}
 ${marcador || buildLateralidadeBlock(vista)}
+
+${buildRoupaBlock()}
 ${naoRepetir}${dirPar}
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
@@ -741,6 +764,8 @@ function buildChainPrompt(movimento, ctx, comparacao = null, marcador = null, an
   return `Você é um fisioterapeuta especialista em cadeias musculares e trilhos anatômicos. Analise esta fotografia — <strong>${movimento}</strong> — seguindo rigorosamente as diretrizes abaixo.
 ${ctxBlock}${comparacaoBlock}${achadosBlock}
 ${marcador || buildLateralidadeBlock(movimento)}
+
+${buildRoupaBlock()}
 ${naoRepetir}
 <strong>Tom:</strong> escreva de forma clara e direta, como para uma colega fisioterapeuta. Frases curtas e objetivas — use terminologia técnica quando for mais precisa do que uma descrição simples, mas evite jargão desnecessário. Vá direto aos achados: não abra com frases introdutórias genéricas (ex.: "Nesta imagem observa-se...", "Analisando a fotografia..."). Comece diretamente pelo primeiro achado.
 
