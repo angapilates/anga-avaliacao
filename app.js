@@ -708,9 +708,9 @@ DIRETRIZES:
 
 3. ${dir3}
 
-4. Para cada alteração, inclua uma <strong>sugestão breve de abordagem pelo movimento</strong> (ex.: mobilização articular, fortalecimento de estabilizadores, alongamento de cadeias anteriores, reeducação respiratória) — sem detalhar exercícios específicos, pois o plano completo é gerado em outra etapa.
+4. <strong>Não sugira condutas.</strong> Não indique abordagens, não recomende o que trabalhar e não proponha tipos de exercício ou de estímulo. Esta etapa é só de identificação e interpretação dos achados. Os objetivos e o programa terapêutico são gerados em outras etapas, a partir destas análises.
 
-5. Utilize como referencial as cadeias musculares e os trilhos anatômicos. Não cite autores, livros ou obras no texto gerado.
+5. Raciocine a partir das cadeias musculares e dos trilhos anatômicos, mas use esse referencial para fundamentar a interpretação, sem transformá-lo em um bloco à parte do texto. Não cite autores, livros ou obras no texto gerado.
 
 6. <strong>Formatação:</strong> use apenas <strong>...</strong> para negritos. Não use travessões (—), hífens como marcador, asteriscos (*) ou hashtags (#), nem qualquer marcador de lista. Escreva em parágrafos corridos separados por quebras de linha, nunca em bullet points. O texto deve soar como um laudo clínico redigido por um fisioterapeuta, não como um texto gerado por IA.
 
@@ -748,17 +748,17 @@ DIRETRIZES:
 
 1. Descreva apenas o que é efetivamente visível na imagem. Se algum achado não for claramente observável, declare isso explicitamente. Nunca invente ou presuma informações ausentes.
 
-2. Para cada achado identificado, estruture a análise em quatro parágrafos, cada um iniciado apenas pelo rótulo em negrito, sem traços, asteriscos ou marcadores antes dele:
+2. Para cada achado identificado, estruture a análise em três parágrafos, cada um iniciado apenas pelo rótulo em negrito, sem traços, asteriscos ou marcadores antes dele:
    <strong>Localização exata:</strong> descreva com precisão a região anatômica onde a tensão, encurtamento, retificação ou curva excessiva é observada (ex.: retificação da lordose lombar, tensão no terço superior do trapézio direito, limitação na cadeia posterior a partir dos isquiotibiais bilateralmente).
-   <strong>Cadeias e trilhos envolvidos:</strong> identifique quais cadeias musculares e trilhos anatômicos estão manifestando tensão ou insuficiência com base no padrão observado.
    <strong>Causas biomecânicas prováveis:</strong> mecanismos musculares e articulares geradores do padrão identificado.
    <strong>Consequências funcionais e sintomatológicas:</strong> sobrecargas, compensações em cadeia, possíveis dores e limitações decorrentes.
+   Não crie um parágrafo separado para listar cadeias musculares ou trilhos anatômicos: eles são o raciocínio que sustenta a análise, não um item do laudo.
 
 3. ${dir3}${dir3b}
 
-4. Para cada achado, inclua uma <strong>sugestão breve de abordagem pelo movimento</strong> — sem detalhar exercícios específicos, pois o plano completo é gerado em outra etapa.
+4. <strong>Não sugira condutas.</strong> Não indique abordagens, não recomende o que trabalhar e não proponha tipos de exercício ou de estímulo. Esta etapa é só de identificação e interpretação dos achados. Os objetivos e o programa terapêutico são gerados em outras etapas, a partir destas análises.
 
-5. Utilize como referencial as cadeias musculares e os trilhos anatômicos. Não cite autores, livros ou obras no texto gerado.
+5. Raciocine a partir das cadeias musculares e dos trilhos anatômicos, mas use esse referencial para fundamentar a interpretação, sem transformá-lo em um bloco à parte do texto. Não cite autores, livros ou obras no texto gerado.
 
 6. <strong>Formatação:</strong> use apenas <strong>...</strong> para negritos. Não use travessões (—), hífens como marcador, asteriscos (*) ou hashtags (#), nem qualquer marcador de lista. Escreva em parágrafos corridos separados por quebras de linha, nunca em bullet points. O texto deve soar como um laudo clínico redigido por um fisioterapeuta, não como um texto gerado por IA.
 
