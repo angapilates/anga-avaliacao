@@ -16,7 +16,8 @@ app.post('/api/ia', async (req, res) => {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
+    // 3 minutos: o plano de tratamento e as análises longas não cabiam em 55s
+    const timeout = setTimeout(() => controller.abort(), 180000);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

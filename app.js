@@ -558,6 +558,35 @@ const PAIR_MAP = {
 // ── Limpeza de marcadores de markdown no texto devolvido pela IA ──────────
 // A IA as vezes devolve **negrito**, bullets com * ou - e titulos com #.
 // Aqui isso e convertido/removido antes de entrar na tela e no PDF.
+// ── Chamada à IA com repetição automática ────────────────────────────────
+// Algumas análises demoram. Se o servidor cortar por tempo (504), se o serviço
+// estiver ocupado (429 ou 529) ou se a conexão cair, tenta mais uma vez antes
+// de desistir. Devolve a resposta do servidor, igual ao fetch normal.
+async function fetchIA(corpo, tentativas = 2) {
+  const ESPERA_MS = 2000;
+  let ultimoErro = null;
+  for (let i = 0; i < tentativas; i++) {
+    const ultimaTentativa = (i === tentativas - 1);
+    try {
+      const resp = await fetch('/api/ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpo),
+      });
+      if (!ultimaTentativa && (resp.status === 504 || resp.status === 429 || resp.status === 529)) {
+        await new Promise(r => setTimeout(r, ESPERA_MS));
+        continue;
+      }
+      return resp;
+    } catch (err) {
+      ultimoErro = err;
+      if (ultimaTentativa) break;
+      await new Promise(r => setTimeout(r, ESPERA_MS));
+    }
+  }
+  throw ultimoErro || new Error('Não foi possível falar com a IA. Verifique sua conexão.');
+}
+
 function limparMarkdown(texto) {
   let t = String(texto || '');
   t = t.replace(/\*\*\*([^*]+?)\*\*\*/g, '<strong>$1</strong>');
@@ -780,10 +809,7 @@ async function analisarFoto(key) {
     : await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         messages: [{
@@ -793,7 +819,6 @@ async function analisarFoto(key) {
             { type: 'text', text: prompt }
           ]
         }]
-      })
     });
 
     if (!resp.ok) {
@@ -867,10 +892,7 @@ async function resumirAnalise(key) {
   btn.textContent = 'Gerando…';
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: [
@@ -892,7 +914,6 @@ async function resumirAnalise(key) {
           'Responda em português do Brasil.'
         ].join('\n'),
         messages: [{ role: 'user', content: texto }]
-      })
     });
 
     if (!resp.ok) {
@@ -1005,10 +1026,7 @@ async function analisarRegistroComplementar(id) {
   const { base64, mimeType } = await resizeImageToBase64(r.foto.dataUrl, 800, 0.6);
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         messages: [{
@@ -1018,7 +1036,6 @@ async function analisarRegistroComplementar(id) {
             { type: 'text', text: prompt }
           ]
         }]
-      })
     });
 
     if (!resp.ok) {
@@ -1244,14 +1261,10 @@ ORIENTAÇÕES:
 Regra de rigor: utilize apenas os dados fornecidos. Se algum dado relevante estiver ausente, indique que a análise fica prejudicada. Não invente achados. Responda em português.`;
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-opus-4-8',
         max_tokens: 16000,
         messages: [{ role: 'user', content: prompt }]
-      })
     });
 
     if (!resp.ok) {
@@ -1357,14 +1370,10 @@ async function gerarComparativoCompleto() {
   const prompt = buildComparativoPrompt(dados);
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-opus-4-8',
         max_tokens: 8000,
         messages: [{ role: 'user', content: prompt }]
-      })
     });
 
     if (!resp.ok) {
@@ -2466,10 +2475,7 @@ async function gerarObjetivos(secao) {
   btn.textContent = 'Gerando…';
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: [
@@ -2489,7 +2495,6 @@ async function gerarObjetivos(secao) {
           '10. Responda em português do Brasil.'
         ].join('\n'),
         messages: [{ role: 'user', content: material }]
-      })
     });
 
     if (!resp.ok) {
@@ -2553,15 +2558,11 @@ async function resumirHda() {
   btn.textContent = 'Resumindo…';
 
   try {
-    const resp = await fetch('/api/ia', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const resp = await fetchIA({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2048,
         system: HDA_RESUMO_PROMPT,
         messages: [{ role: 'user', content: texto }]
-      })
     });
 
     if (!resp.ok) {
