@@ -1363,6 +1363,34 @@ textarea { resize: vertical; }
   color: var(--text);
 }
 
+.revisao-notas {
+  position: relative;
+  margin-top: 0.5rem;
+  padding: 0.6rem 2rem 0.6rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: #fffaf3;
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.revisao-notas-titulo {
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+.revisao-notas-fechar {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.4rem;
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
 .btn-gerar-objetivos {
   display: inline-block;
   padding: 3px 12px;
@@ -1476,6 +1504,7 @@ textarea { resize: vertical; }
   .photo-actions,
   .btn-resumir-analise,
   .btn-desfazer-resumo,
+  .revisao-notas,
   .side-mark-row,
   .side-marks,
   .btn-mic,

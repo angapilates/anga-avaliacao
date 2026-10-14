@@ -11,6 +11,9 @@ const photoData = {};
 const photoSide = {};
 // Copia da analise tecnica guardada antes de ser substituida pela versao do paciente
 const analiseBackup = {};
+// Texto original gerado pela IA (antes das edições da fisioterapeuta) e cópia da edição antes da revisão
+const analiseOriginalIA = {};
+const revisaoBackup = {};
 const SIDE_MARK_KEYS = new Set(['Anterior','Posterior','FlexaoLatD','FlexaoLatE','RotacaoD','RotacaoE']);
 const testResults = {};
 let registrosComplementares = []; // [{ id, nome, foto:{dataUrl,base64,mimeType}|null, analiseHTML }]
@@ -858,6 +861,10 @@ async function analisarFoto(key) {
     resultEl.innerHTML = limparMarkdown(text).replace(/\n/g, '<br>');
     delete analiseBackup[key];
     document.getElementById(`desfazerResumoBtn${key}`)?.remove();
+    analiseOriginalIA[key] = _textoComQuebras(resultEl);
+    delete revisaoBackup[key];
+    document.getElementById(`desfazerRevisaoBtn${key}`)?.remove();
+    document.getElementById(`notasRevisao${key}`)?.remove();
     injectFormatBar(resultEl);
     salvarRascunho();
 
@@ -873,6 +880,7 @@ async function analisarFoto(key) {
       resultEl.parentNode.insertBefore(resumirBtn, resultEl.nextSibling);
     }
     resumirBtn.style.display = '';
+    _garantirBotaoRevisar(key);
   } catch (err) {
     resultEl.className = 'ai-result visible';
     resultEl.style.color = '#dc2626';
@@ -961,6 +969,187 @@ async function resumirAnalise(key) {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Versão para o paciente';
+  }
+}
+
+// ── Revisão da edição da fisioterapeuta (IA revisa como colega, olhando a foto) ──
+function _garantirBotaoRevisar(key) {
+  const resultEl = document.getElementById(`result${key}`);
+  if (!resultEl) return;
+  let btn = document.getElementById(`revisarAnaliseBtn${key}`);
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = `revisarAnaliseBtn${key}`;
+    btn.className = 'btn-resumir-analise btn-revisar-analise';
+    btn.textContent = 'Revisar minha edição';
+    btn.title = 'A IA reescreve o texto considerando as suas correções e observações, conferindo com a foto';
+    btn.onclick = () => revisarEdicaoAnalise(key);
+    resultEl.parentNode.insertBefore(btn, resultEl.nextSibling);
+  }
+  _renderDesfazerRevisaoBtn(key);
+}
+
+function _renderDesfazerRevisaoBtn(key) {
+  const revisarBtn = document.getElementById(`revisarAnaliseBtn${key}`);
+  let btn = document.getElementById(`desfazerRevisaoBtn${key}`);
+  if (!revisarBtn || !revisaoBackup[key]) { if (btn) btn.remove(); return; }
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = `desfazerRevisaoBtn${key}`;
+    btn.className = 'btn-desfazer-resumo';
+    btn.onclick = () => desfazerRevisao(key);
+    revisarBtn.parentNode.insertBefore(btn, revisarBtn.nextSibling);
+  }
+  btn.textContent = '↩ Desfazer, voltar à minha edição';
+}
+
+function desfazerRevisao(key) {
+  const resultEl = document.getElementById(`result${key}`);
+  if (!resultEl || !revisaoBackup[key]) return;
+  resultEl.innerHTML = revisaoBackup[key];
+  delete revisaoBackup[key];
+  document.getElementById(`desfazerRevisaoBtn${key}`)?.remove();
+  document.getElementById(`notasRevisao${key}`)?.remove();
+  salvarRascunho();
+  showToast('Sua edição foi restaurada.');
+}
+
+function _mostrarNotasRevisao(key, notas) {
+  document.getElementById(`notasRevisao${key}`)?.remove();
+  if (!notas) return;
+  const resultEl = document.getElementById(`result${key}`);
+  const box = document.createElement('div');
+  box.id = `notasRevisao${key}`;
+  box.className = 'revisao-notas';
+  const fechar = document.createElement('button');
+  fechar.type = 'button';
+  fechar.className = 'revisao-notas-fechar';
+  fechar.title = 'Fechar';
+  fechar.textContent = '×';
+  fechar.onclick = () => box.remove();
+  const titulo = document.createElement('div');
+  titulo.className = 'revisao-notas-titulo';
+  titulo.textContent = 'Pontos para você conferir (não entram no laudo)';
+  const corpo = document.createElement('div');
+  corpo.innerHTML = limparMarkdown(notas).replace(/\n+/g, '<br>');
+  box.append(fechar, titulo, corpo);
+  resultEl.parentNode.insertBefore(box, resultEl.nextSibling);
+}
+
+function _textoComQuebras(el) {
+  if (!el) return '';
+  const d = document.createElement('div');
+  d.innerHTML = el.innerHTML
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p|li)>/gi, '\n');
+  return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function buildRevisaoPrompt(key, vista, original, editado, ctx, temFoto) {
+  const ehCadeia = CHAIN_KEYS.has(key);
+  const estrutura = ehCadeia
+    ? '<strong>Localização exata:</strong>, <strong>Causas biomecânicas prováveis:</strong> e <strong>Consequências funcionais e sintomatológicas:</strong>'
+    : '<strong>Achado visual:</strong>, <strong>Causas biomecânicas e musculares prováveis:</strong> e <strong>Consequências funcionais e sintomatológicas:</strong>';
+  const ctxBlock = ctx ? `\nDADOS CLÍNICOS DO PACIENTE:\n${ctx}\n` : '';
+  const origBlock = original
+    ? `\n<strong>TEXTO ORIGINAL QUE VOCÊ ESCREVEU (antes da edição da colega):</strong>\n${original}\n`
+    : '\n(O texto original anterior à edição não está disponível. Trate o texto abaixo como a versão da colega.)\n';
+  const fotoBlock = temFoto
+    ? `${SIDE_MARK_KEYS.has(key) ? buildMarcadorBlock(key) : buildLateralidadeBlock(vista)}\n\n${buildRoupaBlock()}\n`
+    : '<strong>A fotografia não está disponível nesta revisão.</strong> Revise apenas a partir do texto, sem afirmar nada novo sobre a imagem.\n';
+
+  return `Você é um fisioterapeuta especialista em análise postural, cadeias musculares e trilhos anatômicos. Você escreveu a primeira análise desta fotografia — <strong>${vista}</strong>. A fisioterapeuta responsável pela avaliação, que examinou o paciente pessoalmente, revisou o seu texto: corrigiu o que considerou incorreto, apagou o que não concordou e acrescentou observações próprias, às vezes só em tópicos curtos. Agora vocês trabalham como dois fisioterapeutas revisando o trabalho um do outro, e sua tarefa é entregar o texto final.
+${ctxBlock}${origBlock}
+<strong>TEXTO EDITADO PELA FISIOTERAPEUTA (versão que prevalece):</strong>
+${editado}
+
+${fotoBlock}
+<strong>COMO REVISAR:</strong>
+
+1. <strong>A edição da colega prevalece.</strong> Ela viu o paciente ao vivo e pode ter informações que a foto não mostra (palpação, observação do movimento, relato do paciente). Toda correção dela substitui o que você tinha escrito. Tudo o que ela apagou fica fora do texto final: não traga de volta, nem com outras palavras.
+
+2. <strong>Desenvolva as observações dela com a mesma qualidade do restante do laudo.</strong> Cada tópico curto que ela acrescentou deve virar um achado completo, na mesma estrutura dos demais (${estrutura}). Use a fotografia para descrever o achado com precisão e para fundamentar causas e consequências, raciocinando a partir das cadeias musculares e dos trilhos anatômicos sem criar um bloco à parte para eles.
+
+3. <strong>Mantenha a coerência do texto inteiro.</strong> Se ela corrigiu um lado, uma estrutura ou uma interpretação em um ponto, ajuste todas as menções relacionadas (causas, consequências, comparação entre lados e o parágrafo final de <strong>Análise</strong>). O parágrafo de <strong>Análise</strong> deve integrar os achados dela.
+
+4. <strong>Compare com a imagem, mas sem passar por cima dela.</strong> Se algo que ela escreveu não aparece na foto ou parece divergir dela (por exemplo, o lado de uma alteração), mantenha a versão dela no texto e registre a divergência nas NOTAS. Se você enxergar na foto um achado relevante que não está no texto, não o acrescente ao laudo: sugira nas NOTAS.
+
+5. <strong>Não sugira condutas</strong>, não indique exercícios nem abordagens. Não cite autores ou obras.
+
+6. <strong>Tom:</strong> laudo clínico redigido por fisioterapeuta, para uma colega. Frases curtas e objetivas, terminologia técnica quando for mais precisa. Comece direto pelo primeiro achado, sem introduções e sem comentar a revisão.
+
+7. <strong>Formatação:</strong> use apenas <strong>...</strong> para negritos. Não use travessões, hífens como marcador, asteriscos, hashtags nem listas. Parágrafos corridos separados por quebras de linha.
+
+<strong>FORMATO DA RESPOSTA:</strong> escreva primeiro o texto final completo do laudo. Depois, numa linha sozinha, escreva exatamente ###NOTAS### e, abaixo, em frases curtas, os pontos para a colega conferir (divergências com a imagem e achados sugeridos). Se não houver nenhum ponto, escreva apenas "Nenhum ponto a conferir." abaixo da linha ###NOTAS###.
+
+Responda em português do Brasil.`;
+}
+
+async function revisarEdicaoAnalise(key) {
+  const resultEl = document.getElementById(`result${key}`);
+  const editado = _textoComQuebras(resultEl);
+  if (!editado) return;
+
+  const original = analiseOriginalIA[key] || '';
+  const _norm = t => t.replace(/\s+/g, ' ').trim();
+  if (original && _norm(original) === _norm(editado)) {
+    showToast('Edite o texto com suas correções e observações antes de pedir a revisão.');
+    return;
+  }
+
+  const temFoto = !!photoData[key];
+  if (!temFoto && !confirm('A foto desta vista não está carregada. Revisar apenas pelo texto?')) return;
+
+  const btn = document.getElementById(`revisarAnaliseBtn${key}`);
+  btn.disabled = true;
+  btn.textContent = 'Revisando…';
+
+  try {
+    const vista = VIEW_LABELS[key] || key;
+    const prompt = buildRevisaoPrompt(key, vista, original, editado, coletarContextoClinico(), temFoto);
+    const content = [];
+    if (temFoto) {
+      const { base64, mimeType } = (SIDE_MARK_KEYS.has(key) && photoSide[key])
+        ? await resizeImageToBase64ComMarcador(photoData[key].dataUrl, photoSide[key], 800, 0.6)
+        : await resizeImageToBase64(photoData[key].dataUrl, 800, 0.6);
+      content.push({ type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } });
+    }
+    content.push({ type: 'text', text: prompt });
+
+    const resp = await fetchIA({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content }]
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erro ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const bruto = data.content?.[0]?.text || '';
+    if (!bruto) throw new Error('Sem resposta da IA');
+
+    const [textoFinal, notasBrutas = ''] = bruto.split(/\n?\s*#{2,}\s*NOTAS\s*#{2,}\s*\n?/i);
+    const revisado = (textoFinal || '').trim();
+    if (!revisado) throw new Error('A revisão voltou vazia.');
+    const notas = /^nenhum ponto/i.test(notasBrutas.trim()) ? '' : notasBrutas.trim();
+
+    if (confirm('Substituir o texto pela versão revisada?')) {
+      revisaoBackup[key] = resultEl.innerHTML;
+      resultEl.innerHTML = limparMarkdown(revisado).replace(/\n/g, '<br>');
+      _renderDesfazerRevisaoBtn(key);
+      _mostrarNotasRevisao(key, notas);
+      salvarRascunho();
+    }
+  } catch (err) {
+    showToast('Erro ao revisar: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Revisar minha edição';
   }
 }
 
@@ -2839,6 +3028,8 @@ function _coletarRascunho(incluirFotos) {
   d.testResults = { ...testResults };
   d.photoSides = { ...photoSide };
   d.analiseBackups = { ...analiseBackup };
+  d.analisesOriginaisIA = { ...analiseOriginalIA };
+  d.revisaoBackups = { ...revisaoBackup };
   d.objetivosBackups = { ...objetivosBackup };
   d.bodyMarkers = bodyDots.map(d => ({ cx: d.x + '%', cy: d.y + '%' }));
   d.bodyStrokes = bodyStrokes.map(s => ({ points: s.points.slice() }));
@@ -2939,6 +3130,12 @@ function _aplicarDadosAoFormulario(d) {
   if (d.analiseBackups) {
     Object.entries(d.analiseBackups).forEach(([k, html]) => { if (html) analiseBackup[k] = html; });
   }
+  if (d.analisesOriginaisIA) {
+    Object.entries(d.analisesOriginaisIA).forEach(([k, txt]) => { if (txt) analiseOriginalIA[k] = txt; });
+  }
+  if (d.revisaoBackups) {
+    Object.entries(d.revisaoBackups).forEach(([k, html]) => { if (html) revisaoBackup[k] = html; });
+  }
 
   if (d.aiResults) {
     Object.entries(d.aiResults).forEach(([k, html]) => {
@@ -2954,6 +3151,7 @@ function _aplicarDadosAoFormulario(d) {
         btn.onclick = () => resumirAnalise(k);
         el.parentNode.insertBefore(btn, el.nextSibling);
       }
+      _garantirBotaoRevisar(k);
       _renderDesfazerBtn(k);
     });
   }
@@ -3254,7 +3452,12 @@ function _limparCamposReavaliacao() {
     delete photoData[k];
     delete photoSide[k];
     delete analiseBackup[k];
+    delete analiseOriginalIA[k];
+    delete revisaoBackup[k];
     document.getElementById(`desfazerResumoBtn${k}`)?.remove();
+    document.getElementById(`desfazerRevisaoBtn${k}`)?.remove();
+    document.getElementById(`notasRevisao${k}`)?.remove();
+    document.getElementById(`revisarAnaliseBtn${k}`)?.remove();
     _renderPhotoSide(k);
     const preview = document.getElementById(`preview${k}`);
     const placeholder = document.getElementById(`placeholder${k}`);
