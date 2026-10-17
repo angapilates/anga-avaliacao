@@ -1807,13 +1807,27 @@ async function exportarPDF() {
       cy += cardH + 2;
     }
 
-    // Card com links clicáveis (um por linha)
-    function addLinksField(label, urls) {
+    // Card com as mensagens da Vedius; os links dentro do texto ficam clicáveis
+    function addLinksField(label, itens) {
       const hPad = 3, vPad = 2.5, lineH = 4.5;
       const innerW = CW - hPad * 2;
       pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
-      const blocos = urls.map(u => pdf.splitTextToSize(u, innerW));
-      const total = blocos.reduce((n, b) => n + b.length, 0) + (blocos.length - 1) * 0.4;
+      // Cada item vira uma lista de linhas { txt, url }: o link sempre em linha própria
+      const blocos = itens.map(texto => {
+        const linhas = [];
+        String(texto).replace(/\r/g, '').split('\n').forEach(par => {
+          const partes = par.split(_RE_URL).filter(p => p && p.trim() && !/^[\s.,;:!?]+$/.test(p));
+          if (!partes.length) { linhas.push({ txt: '', url: null }); return; }
+          partes.forEach(parte => {
+            const ehUrl = /^(https?:\/\/|www\.)/i.test(parte.trim());
+            const url = ehUrl ? _normalizarLink(parte) : null;
+            pdf.splitTextToSize(parte.trim(), innerW).forEach(l => linhas.push({ txt: l, url }));
+          });
+        });
+        while (linhas.length && !linhas[linhas.length - 1].txt) linhas.pop();
+        return linhas;
+      });
+      const total = blocos.reduce((n, b) => n + b.length, 0) + (blocos.length - 1) * 0.8;
       const cardH = vPad + 4.5 + total * lineH + vPad;
       ensureY(cardH + 2);
       fc(255, 255, 255); dc(230, 230, 227); pdf.setLineWidth(0.18);
@@ -1822,14 +1836,14 @@ async function exportarPDF() {
       tc(194, 86, 9);
       pdf.text(label.toUpperCase(), CX + hPad, cy + vPad + 3.5);
       pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
-      tc(37, 99, 235);
       let ly = cy + vPad + 4.5 + 3.5;
-      blocos.forEach((linhas, bi) => {
-        linhas.forEach(linha => {
-          pdf.textWithLink(linha, CX + hPad, ly, { url: urls[bi] });
+      blocos.forEach(linhas => {
+        linhas.forEach(({ txt, url }) => {
+          if (url) { tc(37, 99, 235); pdf.textWithLink(txt, CX + hPad, ly, { url }); }
+          else if (txt) { tc(26, 29, 35); pdf.text(txt, CX + hPad, ly); }
           ly += lineH;
         });
-        ly += lineH * 0.4;
+        ly += lineH * 0.8;
       });
       tc(26, 29, 35);
       dc(0, 0, 0); pdf.setLineWidth(0.3);
@@ -2584,8 +2598,8 @@ async function exportarPDF() {
     const planoHTML = planoEl ? planoEl.innerHTML.trim() : storedPlanoHTML;
     console.log('[exportarPDF] planoHTML length:', planoHTML.length);
     if (planoHTML) addPlanoText(planoHTML);
-    const linksVedius = _linksVedius();
-    if (linksVedius.length) addLinksField(linksVedius.length > 1 ? 'Programas na Vedius' : 'Programa na Vedius', linksVedius);
+    const itensVedius = _itensVedius();
+    if (itensVedius.length) addLinksField(itensVedius.length > 1 ? 'Programas na Vedius' : 'Programa na Vedius', itensVedius);
 
     // ══════════════════════════════════════════════════════════════
     // INFORMAÇÕES FINAIS
@@ -3008,68 +3022,95 @@ function _paraWav(amostras, taxa) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
-// ── Links da Vedius (vários links, cada um com botão para abrir) ──────
-// Os links ficam guardados no campo escondido #linkVedius, um por linha,
-// para continuar funcionando com rascunhos e avaliações já salvas.
+// ── Programas da Vedius (mensagem completa + link, vários itens) ──────
+// Cada item é o texto colado da Vedius (mensagem com o link dentro).
+// Ficam guardados no campo escondido #linkVedius como uma lista (JSON).
+// Valores antigos (um link por linha) continuam sendo lidos.
+const _RE_URL = /((?:https?:\/\/|www\.)[^\s<>"')\]]*[^\s<>"')\].,;:!?])/gi;
+
 function _normalizarLink(txt) {
-  const t = String(txt || '').trim();
+  const t = String(txt || '').trim().replace(/[.,;:!?]+$/, '');
   if (!t) return '';
   return /^https?:\/\//i.test(t) ? t : 'https://' + t;
 }
 
-function _linksVedius() {
-  return (document.getElementById('linkVedius')?.value || '')
-    .split(/\s*\n\s*/).map(_normalizarLink).filter(Boolean);
+function _urlsDoTexto(texto) {
+  return (String(texto || '').match(_RE_URL) || []).map(_normalizarLink);
+}
+
+function _itensVedius() {
+  const bruto = (document.getElementById('linkVedius')?.value || '').trim();
+  if (!bruto) return [];
+  if (bruto.startsWith('[')) {
+    try { return JSON.parse(bruto).map(t => String(t || '').trim()).filter(Boolean); } catch {}
+  }
+  return bruto.split(/\s*\n\s*/).filter(Boolean);
 }
 
 function _sincronizarVedius() {
-  const valores = [...document.querySelectorAll('#vediusLinks .vedius-link-input')]
+  const itens = [...document.querySelectorAll('#vediusLinks .vedius-link-input')]
     .map(i => i.value.trim()).filter(Boolean);
   const hidden = document.getElementById('linkVedius');
-  if (hidden) hidden.value = valores.join('\n');
+  if (hidden) hidden.value = itens.length ? JSON.stringify(itens) : '';
+}
+
+function _ajustarAltura(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight + 2, 320) + 'px';
 }
 
 function _criarLinhaVedius(valor = '') {
   const linha = document.createElement('div');
   linha.className = 'vedius-link-row';
 
-  const input = document.createElement('input');
-  input.type = 'url';
+  const input = document.createElement('textarea');
   input.className = 'vedius-link-input';
-  input.placeholder = 'Cole aqui o link do programa criado na Vedius';
+  input.rows = 2;
+  input.placeholder = 'Cole aqui a mensagem do programa criado na Vedius, com o link';
   input.value = valor;
+
+  const acoes = document.createElement('div');
+  acoes.className = 'vedius-acoes';
 
   const abrir = document.createElement('a');
   abrir.className = 'btn-abrir-vedius';
   abrir.target = '_blank';
   abrir.rel = 'noopener noreferrer';
-  abrir.textContent = 'Abrir \u2197';
-  abrir.title = 'Abrir este programa na Vedius em outra aba';
+  abrir.textContent = 'Abrir ↗';
+  abrir.title = 'Abrir o link deste programa em outra aba';
 
   const remover = document.createElement('button');
   remover.type = 'button';
   remover.className = 'btn-remover-vedius';
-  remover.title = 'Remover este link';
-  remover.textContent = '\u00d7';
+  remover.title = 'Remover este programa';
+  remover.textContent = '×';
+
+  const aviso = document.createElement('div');
+  aviso.className = 'vedius-aviso';
+  aviso.textContent = 'Nenhum link encontrado nesta mensagem.';
 
   const atualizar = () => {
-    const url = _normalizarLink(input.value);
+    const url = _urlsDoTexto(input.value)[0] || '';
     abrir.style.display = url ? '' : 'none';
     if (url) abrir.href = url; else abrir.removeAttribute('href');
+    aviso.style.display = (input.value.trim() && !url) ? '' : 'none';
+    _ajustarAltura(input);
   };
   input.addEventListener('input', () => { atualizar(); _sincronizarVedius(); });
-  input.addEventListener('blur', () => {
-    if (input.value.trim()) input.value = _normalizarLink(input.value);
-    atualizar(); _sincronizarVedius(); salvarRascunho();
-  });
+  input.addEventListener('blur', () => { atualizar(); _sincronizarVedius(); salvarRascunho(); });
   remover.onclick = () => {
     const lista = document.getElementById('vediusLinks');
     if (lista.children.length > 1) linha.remove(); else input.value = '';
     atualizar(); _sincronizarVedius(); salvarRascunho();
   };
 
+  const coluna = document.createElement('div');
+  coluna.className = 'vedius-texto';
+  coluna.append(input, aviso);
+  acoes.append(abrir, remover);
+  linha.append(coluna, acoes);
+  requestAnimationFrame(atualizar);
   atualizar();
-  linha.append(input, abrir, remover);
   return linha;
 }
 
@@ -3077,8 +3118,8 @@ function _renderVediusLinks() {
   const lista = document.getElementById('vediusLinks');
   if (!lista) return;
   lista.innerHTML = '';
-  const links = _linksVedius();
-  (links.length ? links : ['']).forEach(l => lista.appendChild(_criarLinhaVedius(l)));
+  const itens = _itensVedius();
+  (itens.length ? itens : ['']).forEach(t => lista.appendChild(_criarLinhaVedius(t)));
 }
 
 function adicionarLinkVedius() {
@@ -3086,7 +3127,7 @@ function adicionarLinkVedius() {
   if (!lista) return;
   const linha = _criarLinhaVedius('');
   lista.appendChild(linha);
-  linha.querySelector('input').focus();
+  linha.querySelector('textarea').focus();
 }
 
 _renderVediusLinks();

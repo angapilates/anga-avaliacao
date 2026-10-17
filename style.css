@@ -1211,12 +1211,30 @@ textarea { resize: vertical; }
 }
 .vedius-link-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.4rem;
 }
-.vedius-link-row .vedius-link-input {
+.vedius-texto {
   flex: 1;
   min-width: 0;
+}
+.vedius-link-row .vedius-link-input {
+  display: block;
+  width: 100%;
+  min-height: 3.2rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+.vedius-acoes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.vedius-aviso {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #b45309;
 }
 .btn-abrir-vedius {
   flex-shrink: 0;
