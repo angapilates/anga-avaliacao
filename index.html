@@ -828,8 +828,10 @@
         </div>
 
         <div class="field-group vedius-field">
-          <label>Link do Programa Terapêutico na Vedius</label>
-          <input type="text" id="linkVedius" placeholder="Cole aqui o link do programa de exercícios criado na Vedius" />
+          <label>Links do Programa Terapêutico na Vedius</label>
+          <input type="hidden" id="linkVedius" />
+          <div id="vediusLinks" class="vedius-links"></div>
+          <button type="button" class="btn-add-vedius" onclick="adicionarLinkVedius()">+ Adicionar outro link</button>
         </div>
 
         <div class="export-box">

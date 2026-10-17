@@ -255,6 +255,7 @@ label {
 }
 
 input[type="text"],
+input[type="url"],
 input[type="date"],
 input[type="password"],
 input[type="number"],
@@ -1202,6 +1203,60 @@ textarea { resize: vertical; }
   font-style: italic;
 }
 
+/* LINKS DA VEDIUS */
+.vedius-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.vedius-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.vedius-link-row .vedius-link-input {
+  flex: 1;
+  min-width: 0;
+}
+.btn-abrir-vedius {
+  flex-shrink: 0;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-abrir-vedius:hover { background: var(--primary-light); }
+.btn-remover-vedius {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-remover-vedius:hover { border-color: #dc2626; color: #dc2626; }
+.btn-add-vedius {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-add-vedius:hover { border-color: var(--primary); color: var(--primary); }
+
 /* LISTA DE EXERCÍCIOS VEDIUS */
 .vedius-lista-section {
   margin-top: 1.75rem;
@@ -1504,6 +1559,9 @@ textarea { resize: vertical; }
   .photo-actions,
   .btn-resumir-analise,
   .btn-desfazer-resumo,
+  .btn-add-vedius,
+  .btn-remover-vedius,
+  .btn-abrir-vedius,
   .revisao-notas,
   .side-mark-row,
   .side-marks,

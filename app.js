@@ -1807,6 +1807,35 @@ async function exportarPDF() {
       cy += cardH + 2;
     }
 
+    // Card com links clicáveis (um por linha)
+    function addLinksField(label, urls) {
+      const hPad = 3, vPad = 2.5, lineH = 4.5;
+      const innerW = CW - hPad * 2;
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
+      const blocos = urls.map(u => pdf.splitTextToSize(u, innerW));
+      const total = blocos.reduce((n, b) => n + b.length, 0) + (blocos.length - 1) * 0.4;
+      const cardH = vPad + 4.5 + total * lineH + vPad;
+      ensureY(cardH + 2);
+      fc(255, 255, 255); dc(230, 230, 227); pdf.setLineWidth(0.18);
+      pdf.roundedRect(CX, cy, CW, cardH, 4, 4, 'FD');
+      pdf.setFontSize(6.5); pdf.setFont('helvetica', 'bold');
+      tc(194, 86, 9);
+      pdf.text(label.toUpperCase(), CX + hPad, cy + vPad + 3.5);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
+      tc(37, 99, 235);
+      let ly = cy + vPad + 4.5 + 3.5;
+      blocos.forEach((linhas, bi) => {
+        linhas.forEach(linha => {
+          pdf.textWithLink(linha, CX + hPad, ly, { url: urls[bi] });
+          ly += lineH;
+        });
+        ly += lineH * 0.4;
+      });
+      tc(26, 29, 35);
+      dc(0, 0, 0); pdf.setLineWidth(0.3);
+      cy += cardH + 2;
+    }
+
     function addFieldBadge(label, value) {
       if (!value || !String(value).trim()) return;
       const str = String(value).trim();
@@ -2555,8 +2584,8 @@ async function exportarPDF() {
     const planoHTML = planoEl ? planoEl.innerHTML.trim() : storedPlanoHTML;
     console.log('[exportarPDF] planoHTML length:', planoHTML.length);
     if (planoHTML) addPlanoText(planoHTML);
-    const linkVedius = val('linkVedius');
-    if (linkVedius) addField('Link do Programa na Vedius', linkVedius);
+    const linksVedius = _linksVedius();
+    if (linksVedius.length) addLinksField(linksVedius.length > 1 ? 'Programas na Vedius' : 'Programa na Vedius', linksVedius);
 
     // ══════════════════════════════════════════════════════════════
     // INFORMAÇÕES FINAIS
@@ -2979,6 +3008,89 @@ function _paraWav(amostras, taxa) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
+// ── Links da Vedius (vários links, cada um com botão para abrir) ──────
+// Os links ficam guardados no campo escondido #linkVedius, um por linha,
+// para continuar funcionando com rascunhos e avaliações já salvas.
+function _normalizarLink(txt) {
+  const t = String(txt || '').trim();
+  if (!t) return '';
+  return /^https?:\/\//i.test(t) ? t : 'https://' + t;
+}
+
+function _linksVedius() {
+  return (document.getElementById('linkVedius')?.value || '')
+    .split(/\s*\n\s*/).map(_normalizarLink).filter(Boolean);
+}
+
+function _sincronizarVedius() {
+  const valores = [...document.querySelectorAll('#vediusLinks .vedius-link-input')]
+    .map(i => i.value.trim()).filter(Boolean);
+  const hidden = document.getElementById('linkVedius');
+  if (hidden) hidden.value = valores.join('\n');
+}
+
+function _criarLinhaVedius(valor = '') {
+  const linha = document.createElement('div');
+  linha.className = 'vedius-link-row';
+
+  const input = document.createElement('input');
+  input.type = 'url';
+  input.className = 'vedius-link-input';
+  input.placeholder = 'Cole aqui o link do programa criado na Vedius';
+  input.value = valor;
+
+  const abrir = document.createElement('a');
+  abrir.className = 'btn-abrir-vedius';
+  abrir.target = '_blank';
+  abrir.rel = 'noopener noreferrer';
+  abrir.textContent = 'Abrir \u2197';
+  abrir.title = 'Abrir este programa na Vedius em outra aba';
+
+  const remover = document.createElement('button');
+  remover.type = 'button';
+  remover.className = 'btn-remover-vedius';
+  remover.title = 'Remover este link';
+  remover.textContent = '\u00d7';
+
+  const atualizar = () => {
+    const url = _normalizarLink(input.value);
+    abrir.style.display = url ? '' : 'none';
+    if (url) abrir.href = url; else abrir.removeAttribute('href');
+  };
+  input.addEventListener('input', () => { atualizar(); _sincronizarVedius(); });
+  input.addEventListener('blur', () => {
+    if (input.value.trim()) input.value = _normalizarLink(input.value);
+    atualizar(); _sincronizarVedius(); salvarRascunho();
+  });
+  remover.onclick = () => {
+    const lista = document.getElementById('vediusLinks');
+    if (lista.children.length > 1) linha.remove(); else input.value = '';
+    atualizar(); _sincronizarVedius(); salvarRascunho();
+  };
+
+  atualizar();
+  linha.append(input, abrir, remover);
+  return linha;
+}
+
+function _renderVediusLinks() {
+  const lista = document.getElementById('vediusLinks');
+  if (!lista) return;
+  lista.innerHTML = '';
+  const links = _linksVedius();
+  (links.length ? links : ['']).forEach(l => lista.appendChild(_criarLinhaVedius(l)));
+}
+
+function adicionarLinkVedius() {
+  const lista = document.getElementById('vediusLinks');
+  if (!lista) return;
+  const linha = _criarLinhaVedius('');
+  lista.appendChild(linha);
+  linha.querySelector('input').focus();
+}
+
+_renderVediusLinks();
+
 // ── Toast ─────────────────────────────────────────────────────
 function showToast(msg) {
   const toast = document.getElementById('toast');
@@ -3074,6 +3186,7 @@ function _aplicarDadosAoFormulario(d) {
     const el = document.getElementById(id);
     if (el) el.value = d[id];
   });
+  _renderVediusLinks();
 
   if (d.atividadeFisica) {
     const r = document.querySelector(`input[name="atividadeFisica"][value="${d.atividadeFisica}"]`);
@@ -3439,6 +3552,7 @@ function _limparCamposReavaliacao() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  _renderVediusLinks();
   document.querySelectorAll('.toggle-btn.active').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.eva-btn.active').forEach(b => b.classList.remove('active'));
   const evaDesc = document.getElementById('evaDesc');
