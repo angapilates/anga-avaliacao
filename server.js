@@ -31,9 +31,26 @@ app.post('/api/ia', async (req, res) => {
     });
 
     clearTimeout(timeout);
+
+    // Modo "aos poucos" (streaming): a resposta da IA vai sendo repassada
+    // enquanto é escrita. Assim a hospedagem nunca fica parada esperando
+    // e não corta respostas longas com o erro 504.
+    if (req.body && req.body.stream && response.ok && response.body) {
+      res.status(200).set({
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      res.flushHeaders();
+      for await (const pedaco of response.body) res.write(pedaco);
+      return res.end();
+    }
+
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
+    if (res.headersSent) return res.end();
     if (err.name === 'AbortError') {
       res.status(504).json({ error: { message: 'A análise demorou demais. Tente novamente.' } });
     } else {

@@ -578,17 +578,52 @@ const PAIR_MAP = {
 // Algumas análises demoram. Se o servidor cortar por tempo (504), se o serviço
 // estiver ocupado (429 ou 529) ou se a conexão cair, tenta mais uma vez antes
 // de desistir. Devolve a resposta do servidor, igual ao fetch normal.
+// Pede a resposta da IA "aos poucos" (streaming) e monta o texto completo aqui.
+// Devolve uma resposta no mesmo formato de antes, para o resto do app não mudar.
+async function _chamarIAStream(corpo) {
+  const resp = await fetch('/api/ia', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...corpo, stream: true }),
+  });
+  const tipo = resp.headers.get('content-type') || '';
+  if (!resp.ok || !tipo.includes('text/event-stream')) return resp;
+
+  const leitor = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', texto = '', erro = null, motivo = null, terminou = false;
+  for (;;) {
+    const { value, done } = await leitor.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) >= 0) {
+      const bloco = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      const linha = bloco.split('\n').find(l => l.startsWith('data:'));
+      if (!linha) continue;
+      let ev;
+      try { ev = JSON.parse(linha.slice(5).trim()); } catch { continue; }
+      if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') texto += ev.delta.text;
+      else if (ev.type === 'message_delta') motivo = ev.delta?.stop_reason || motivo;
+      else if (ev.type === 'message_stop') terminou = true;
+      else if (ev.type === 'error') erro = ev.error || { message: 'Erro na IA' };
+    }
+  }
+
+  const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+  if (erro) return json(erro.type === 'overloaded_error' ? 529 : 500, { error: erro });
+  if (!terminou) throw new Error('A conexão caiu antes de a IA terminar a resposta. Tente novamente.');
+  return json(200, { content: [{ type: 'text', text: texto }], stop_reason: motivo });
+}
+
 async function fetchIA(corpo, tentativas = 2) {
   const ESPERA_MS = 2000;
   let ultimoErro = null;
   for (let i = 0; i < tentativas; i++) {
     const ultimaTentativa = (i === tentativas - 1);
     try {
-      const resp = await fetch('/api/ia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
-      });
+      const resp = await _chamarIAStream(corpo);
       if (!ultimaTentativa && (resp.status === 504 || resp.status === 429 || resp.status === 529)) {
         await new Promise(r => setTimeout(r, ESPERA_MS));
         continue;
